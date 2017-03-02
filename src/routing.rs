@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 use regex::Regex;
-use regex::quote as regex_quote;
+use regex::escape as regex_quote;
 
 use hyper::method::Method;
 
@@ -33,19 +33,19 @@ fn parse_rule(rule: &str) -> Vec<(Option<&str>, &str)> {
             Some(caps) => {
                 let static_part = caps.name("static");
                 if static_part.is_some() {
-                    rule_parts.push((None, static_part.unwrap()));
+                    rule_parts.push((None, static_part.unwrap().as_str()));
                 }
                 let variable = caps.name("variable").unwrap();
                 let converter = match caps.name("converter") {
-                    Some(converter) => { converter },
+                    Some(converter) => { converter.as_str() },
                     None => { "default" },
                 };
-                if used_names.contains(variable) {
-                    panic!("variable name {} used twice.", variable);
+                if used_names.contains(variable.as_str()) {
+                    panic!("variable name {} used twice.", variable.as_str());
                 }
-                used_names.insert(variable);
-                rule_parts.push((Some(converter), variable));
-                let end = caps.pos(0).unwrap().1;
+                used_names.insert(variable.as_str());
+                rule_parts.push((Some(converter), variable.as_str()));
+                let end = caps.get(0).unwrap().end();
                 let (_, tail) = remaining.split_at(end);
                 remaining = tail;
             },
@@ -201,16 +201,14 @@ impl Rule {
     pub fn matched(&self, path: String) -> Option<Result<ViewArgs, RequestSlashError>> {
         match self.matcher.regex.captures(&path) {
             Some(caps) => {
-                if let Some(suffix) = caps.name("__suffix__") {
-                    if suffix.is_empty() {
-                        return Some(Err(RequestSlashError));
-                    }
+                if let None = caps.name("__suffix__") {
+                    return Some(Err(RequestSlashError));
                 }
                 let mut view_args: HashMap<String, String> = HashMap::new();
                 for variable in self.matcher.regex.capture_names() {
                     if let Some(variable) = variable {
                         if variable != "__suffix__" {
-                            view_args.insert(variable.to_string(), caps.name(variable).unwrap().to_string());
+                            view_args.insert(variable.to_owned(), caps.name(variable).unwrap().as_str().to_owned());
                         }
                     }
                 }
