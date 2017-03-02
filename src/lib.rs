@@ -58,6 +58,7 @@ extern crate handlebars;
 extern crate typemap;
 extern crate mime;
 extern crate mime_guess;
+extern crate lazycell;
 
 /* public api */
 pub use app::Pencil;

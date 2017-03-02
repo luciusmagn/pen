@@ -7,6 +7,7 @@ use std::io;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::convert;
+use std::cell::RefCell;
 
 use hyper;
 use hyper::server::request::Request as HttpRequest;
@@ -31,6 +32,7 @@ use routing::{Rule, MapAdapterMatched, MapAdapter};
 use types::ViewArgs;
 use http_errors::HTTPError;
 use formparser::FormDataParser;
+use lazycell::LazyCell;
 
 
 /// Request type.
@@ -55,12 +57,12 @@ pub struct Request<'r, 'a, 'b: 'a> {
     pub routing_error: Option<HTTPError>,
     /// Storage for data of extensions.
     pub extensions_data: TypeMap,
-    body: HttpReader<&'a mut BufReader<&'b mut NetworkStream>>,
+    body: RefCell<HttpReader<&'a mut BufReader<&'b mut NetworkStream>>>,
     host: hyper::header::Host,
-    args: Option<MultiDict<String>>,
-    form: Option<MultiDict<String>>,
-    files: Option<MultiDict<FilePart>>,
-    cached_json: Option<Option<serde_json::Value>>
+    args: LazyCell<MultiDict<String>>,
+    form: LazyCell<MultiDict<String>>,
+    files: LazyCell<MultiDict<FilePart>>,
+    cached_json: LazyCell<Option<serde_json::Value>>
 }
 
 impl<'r, 'a, 'b: 'a> Request<'r, 'a, 'b> {
@@ -99,12 +101,12 @@ impl<'r, 'a, 'b: 'a> Request<'r, 'a, 'b> {
             routing_redirect: None,
             routing_error: None,
             extensions_data: TypeMap::new(),
-            body: body,
+            body: RefCell::new(body),
             host: host,
-            args: None,
-            form: None,
-            files: None,
-            cached_json: None,
+            args: LazyCell::new(),
+            form: LazyCell::new(),
+            files: LazyCell::new(),
+            cached_json: LazyCell::new(),
         })
     }
 
@@ -150,8 +152,8 @@ impl<'r, 'a, 'b: 'a> Request<'r, 'a, 'b> {
     }
 
     /// The parsed URL parameters.
-    pub fn args(&mut self) -> &MultiDict<String> {
-        if self.args.is_none() {
+    pub fn args(&self) -> &MultiDict<String> {
+        if !self.args.filled() {
             let mut args = MultiDict::new();
             if let Some(query) = self.query_string() {
                 let pairs = form_urlencoded::parse(query.as_bytes());
@@ -159,9 +161,9 @@ impl<'r, 'a, 'b: 'a> Request<'r, 'a, 'b> {
                     args.add(k, v);
                 }
             }
-            self.args = Some(args);
+            self.args.fill(args).expect("This was checked to be empty!");
         }
-        self.args.as_ref().unwrap()
+        self.args.borrow().expect("This is checked to be always filled")
     }
 
     /// Get content type.
@@ -171,10 +173,10 @@ impl<'r, 'a, 'b: 'a> Request<'r, 'a, 'b> {
     }
 
     /// Parses the incoming JSON request data.
-    pub fn get_json(&mut self) -> &Option<serde_json::Value> {
-        if self.cached_json.is_none() {
+    pub fn get_json(&self) -> &Option<serde_json::Value> {
+        if !self.cached_json.filled() {
             let mut data = String::from("");
-            let rv = match self.read_to_string(&mut data) {
+            let rv = match self.body.borrow_mut().read_to_string(&mut data) {
                 Ok(_) => {
                     match serde_json::from_str(&data) {
                         Ok(json) => Some(json),
@@ -185,39 +187,39 @@ impl<'r, 'a, 'b: 'a> Request<'r, 'a, 'b> {
                     None
                 }
             };
-            self.cached_json = Some(rv);
+            self.cached_json.fill(rv).expect("This was checked to be empty!");
         }
-        self.cached_json.as_ref().unwrap()
+        self.cached_json.borrow().expect("This is checked to be always filled")
     }
 
     /// This method is used internally to retrieve submitted data.
-    fn load_form_data(&mut self) {
-        if self.form.is_some() {
+    fn load_form_data(&self) {
+        if self.form.filled() {
             return
         }
         let (form, files) = match self.content_type() {
             Some(ContentType(mimetype)) => {
                 let parser = FormDataParser::new();
-                parser.parse(&mut self.body, &self.headers, &mimetype)
+                parser.parse(&mut *self.body.borrow_mut(), &self.headers, &mimetype)
             },
             None => {
                 (MultiDict::new(), MultiDict::new())
             }
         };
-        self.form = Some(form);
-        self.files = Some(files);
+        self.form.fill(form).expect("This was checked to be empty!");
+        self.files.fill(files).expect("This was checked to be empty!");
     }
 
     /// The form parameters.
-    pub fn form(&mut self) -> &MultiDict<String> {
+    pub fn form(&self) -> &MultiDict<String> {
         self.load_form_data();
-        self.form.as_ref().unwrap()
+        self.form.borrow().expect("This is always checked to be filled.")
     }
 
     /// All uploaded files.
-    pub fn files(&mut self) -> &MultiDict<FilePart> {
+    pub fn files(&self) -> &MultiDict<FilePart> {
         self.load_form_data();
-        self.files.as_ref().unwrap()
+        self.files.borrow().expect("This is always checked to be filled.")
     }
 
     /// The headers.
@@ -300,7 +302,7 @@ impl<'r, 'a, 'b: 'a> fmt::Debug for Request<'r, 'a, 'b> {
 
 impl<'r, 'a, 'b: 'a> Read for Request<'r, 'a, 'b> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.body.read(buf)
+        self.body.borrow_mut().read(buf)
     }
 }
 
