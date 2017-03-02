@@ -38,7 +38,7 @@
 //! ```
 
 #![allow(unused_attributes)]
-#![crate_name = "pencil"]
+#![crate_name = "sharp_pencil"]
 #![crate_type = "lib"]
 #![doc(html_logo_url = "https://raw.githubusercontent.com/fengsp/pencil/master/logo/pencil.png",
        html_favicon_url = "https://raw.githubusercontent.com/fengsp/pencil/master/logo/favicon.ico",
