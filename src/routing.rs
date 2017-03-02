@@ -64,7 +64,7 @@ fn parse_rule(rule: &str) -> Vec<(Option<&str>, &str)> {
 }
 
 /// The matcher holds the url regex object.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Matcher {
     pub regex: Regex
 }
@@ -146,10 +146,12 @@ impl From<Regex> for Matcher {
 /// Request Slash error.
 /// This is for example the case if you request `/foo`
 /// although the correct URL is `/foo/`.
+#[derive(Debug)]
 pub struct RequestSlashError;
 
 
 /// The map adapter matched value.
+#[derive(Debug)]
 pub enum MapAdapterMatched {
     MatchedRule((Rule, ViewArgs)),
     MatchedRedirect((String, u16)),
@@ -158,7 +160,7 @@ pub enum MapAdapterMatched {
 
 
 /// A Rule represents one URL pattern.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Rule {
     /// The matcher is used to match the url path.
     pub matcher: Matcher,
@@ -221,7 +223,7 @@ impl Rule {
 
 
 /// The map stores all the URL rules.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Map {
     rules: Vec<Rule>,
 }
@@ -248,6 +250,7 @@ impl Map {
 
 
 /// Does the URL matching and building based on runtime information.
+#[derive(Debug)]
 pub struct MapAdapter<'m> {
     map: &'m Map,
     url_scheme: String,

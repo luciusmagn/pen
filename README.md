@@ -7,7 +7,7 @@ A microframework for Rust inspired by Flask.
 ```rust
 extern crate pencil;
 
-use pencil::{Pencil, Request, Response, PencilResult};
+use sharp_pencil::{Pencil, Request, Response, PencilResult};
 
 fn hello(_: &mut Request) -> PencilResult {
     Ok(Response::from("Hello World!"))

@@ -1,9 +1,9 @@
 // Test the HTTP errors.
 
-extern crate pencil;
+extern crate sharp_pencil;
 extern crate hyper;
 
-use pencil::http_errors::NotFound;
+use sharp_pencil::http_errors::NotFound;
 use hyper::header::ContentType;
 
 

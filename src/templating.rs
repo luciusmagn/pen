@@ -56,6 +56,7 @@ trait TemplateLoader {
 }
 
 /// A template loader that loads templates from the file system.
+#[derive(Debug)]
 pub struct FileSystemLoader {
     search_path: String,
 }

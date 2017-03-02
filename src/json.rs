@@ -13,7 +13,7 @@ use types::{PencilResult, PenUserError, UserError};
 /// ```ignore
 /// extern crate rustc_serialize;
 ///
-/// use pencil::{Request, PencilResult, jsonify};
+/// use sharp_pencil::{Request, PencilResult, jsonify};
 ///
 /// #[derive(RustcEncodable)]
 /// struct User {

@@ -6,12 +6,12 @@ extern crate env_logger;
 use std::env;
 use std::collections::BTreeMap;
 use typemap::Key;
-use pencil::{Pencil, Request, Response, PencilResult};
-use pencil::jsonify;
-use pencil::HTTPError;
-use pencil::{redirect, abort};
-use pencil::method::Get;
-use pencil::Module;
+use sharp_pencil::{Pencil, Request, Response, PencilResult};
+use sharp_pencil::jsonify;
+use sharp_pencil::HTTPError;
+use sharp_pencil::{redirect, abort};
+use sharp_pencil::method::Get;
+use sharp_pencil::Module;
 
 
 fn hello(_: &mut Request) -> PencilResult {

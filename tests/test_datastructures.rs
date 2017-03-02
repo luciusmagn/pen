@@ -1,8 +1,8 @@
 // Test data structures.
 
-extern crate pencil;
+extern crate sharp_pencil;
 
-use pencil::datastructures::MultiDict;
+use sharp_pencil::datastructures::MultiDict;
 
 
 #[test]

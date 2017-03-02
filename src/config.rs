@@ -10,7 +10,7 @@ use serde_json::{self, Map, Value};
 /// The pencil `Config` type, We provide ways to fill it from JSON files:
 ///
 /// ```rust,no_run
-/// let mut app = pencil::Pencil::new("/demo");
+/// let mut app = sharp_pencil::Pencil::new("/demo");
 /// app.config.from_jsonfile("yourconfig.json")
 /// ```
 ///
@@ -18,7 +18,7 @@ use serde_json::{self, Map, Value};
 /// pointing to a file:
 ///
 /// ```rust,no_run
-/// let mut app = pencil::Pencil::new("/demo");
+/// let mut app = sharp_pencil::Pencil::new("/demo");
 /// app.config.from_envvar("YOURAPPLICATION_SETTINGS")
 /// ```
 ///

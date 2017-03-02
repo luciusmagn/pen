@@ -42,8 +42,8 @@ pub use self::HTTPError::{
 /// non-200 response.  Here is one usage example:
 ///
 /// ```rust,no_run
-/// use pencil::{Request, PencilResult, PenHTTPError};
-/// use pencil::http_errors::NotFound;
+/// use sharp_pencil::{Request, PencilResult, PenHTTPError};
+/// use sharp_pencil::http_errors::NotFound;
 ///
 ///
 /// fn view(_: &mut Request) -> PencilResult {
@@ -54,8 +54,8 @@ pub use self::HTTPError::{
 /// Pencil comes with a shortcut that can be used to return non-200 HTTP error easily:
 ///
 /// ```rust,no_run
-/// use pencil::{Request, PencilResult};
-/// use pencil::abort;
+/// use sharp_pencil::{Request, PencilResult};
+/// use sharp_pencil::abort;
 ///
 ///
 /// fn view(_: &mut Request) -> PencilResult {

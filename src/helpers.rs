@@ -37,11 +37,11 @@ pub trait PathBound {
     /// ```rust,no_run
     /// use std::io::Read;
     ///
-    /// use pencil::PathBound;
+    /// use sharp_pencil::PathBound;
     ///
     ///
     /// fn main() {
-    ///     let app = pencil::Pencil::new("/web/demo");
+    ///     let app = sharp_pencil::Pencil::new("/web/demo");
     ///     let mut file = app.open_resource("user.sql");
     ///     let mut content = String::from("");
     ///     file.read_to_string(&mut content).unwrap();

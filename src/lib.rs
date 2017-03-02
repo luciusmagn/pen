@@ -18,11 +18,11 @@
 //! A minimal Pencil application looks something like this:
 //!
 //! ```rust,no_run
-//! extern crate pencil;
+//! extern crate sharp_pencil;
 //!
-//! use pencil::Pencil;
-//! use pencil::{Request, PencilResult, Response};
-//! use pencil::method::Get;
+//! use sharp_pencil::Pencil;
+//! use sharp_pencil::{Request, PencilResult, Response};
+//! use sharp_pencil::method::Get;
 //!
 //!
 //! fn hello(_: &mut Request) -> PencilResult {
