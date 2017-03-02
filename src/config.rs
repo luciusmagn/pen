@@ -5,9 +5,7 @@ use std::env;
 use std::io::Read;
 use std::fs::File;
 use std::path::Path;
-use std::collections::BTreeMap;
-use rustc_serialize::json::{Object, Json};
-
+use serde_json::{self, Map, Value};
 
 /// The pencil `Config` type, We provide ways to fill it from JSON files:
 ///
@@ -32,7 +30,7 @@ use rustc_serialize::json::{Object, Json};
 /// ```
 #[derive(Clone)]
 pub struct Config {
-    config: Object,
+    config: serde_json::Map<String, Value>,
 }
 
 impl Default for Config {
@@ -44,19 +42,19 @@ impl Default for Config {
 impl Config {
     /// Create a `Config` object.
     pub fn new() -> Config {
-        let json_object: Object = BTreeMap::new();
+        let json_object: Map<String, Value> = Map::new();
         Config {
             config: json_object,
         }
     }
 
     /// Set a value for the key.
-    pub fn set(&mut self, key: &str, value: Json) {
+    pub fn set(&mut self, key: &str, value: Value) {
         self.config.insert(key.to_string(), value);
     }
 
     /// Returns a reference to the value corresponding to the key.
-    pub fn get(&self, key: &str) -> Option<&Json> {
+    pub fn get(&self, key: &str) -> Option<&Value> {
         self.config.get(&key.to_string())
     }
 
@@ -67,7 +65,7 @@ impl Config {
         match self.get(key) {
             Some(value) => {
                 match *value {
-                    Json::Boolean(value) => value,
+                    Value::Bool(value) => value,
                     _ => default
                 }   
             },  
@@ -90,15 +88,15 @@ impl Config {
         let mut file = File::open(&path).unwrap();
         let mut content = String::new();
         file.read_to_string(&mut content).unwrap();
-        let object: Json = Json::from_str(&content).unwrap();
+        let object: Value = serde_json::from_str(&content).unwrap();
         match object {
-            Json::Object(object) => { self.from_object(object); },
+            Value::Object(object) => { self.from_object(object); },
             _ => { panic!("The configuration file is not an JSON object."); }
         }
     }
 
     /// Updates the values from the given `Object`.
-    pub fn from_object(&mut self, object: Object) {
+    pub fn from_object(&mut self, object: Map<String, Value>) {
         for (key, value) in &object {
             self.set(&key, value.clone());
         }

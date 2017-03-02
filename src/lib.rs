@@ -49,7 +49,8 @@
 #[macro_use]
 extern crate log;
 extern crate hyper;
-extern crate rustc_serialize;
+extern crate serde;
+extern crate serde_json;
 extern crate regex;
 extern crate url;
 extern crate formdata;
