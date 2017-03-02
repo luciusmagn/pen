@@ -10,9 +10,6 @@ homepage = "https://github.com/fengsp/pencil"
 documentation = "http://fengsp.github.io/pencil/"
 description = "A micro web framework for Rust."
 
-[features]
-handlebars_partial_legacy = ["handlebars/partial_legacy"]
-
 [dependencies]
 regex = "0.2"
 serde = "0.9"

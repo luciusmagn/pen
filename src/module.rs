@@ -44,6 +44,15 @@ pub struct Module {
     deferred_routes: Vec<(Matcher, Vec<Method>, String, ViewFunc)>,
 }
 
+use std::fmt;
+
+impl fmt::Debug for Module {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "Module {{ name: {}, root_path: {}, static_folder: {:?}, static_url_path: {:?}, template_folder: {:?} }}",
+            self.name, self.root_path, self.static_folder, self.static_url_path, self.template_folder)
+    }
+}
+
 impl Module {
     pub fn new(name: &str, root_path: &str) -> Module {
         Module {

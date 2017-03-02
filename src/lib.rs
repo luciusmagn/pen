@@ -96,6 +96,10 @@ pub use helpers::{
     send_from_directory,
 };
 pub use module::Module;
+pub use handlebars::Handlebars;
+
+pub use hyper::header::{Cookie, SetCookie, Headers, ContentLength, ContentType};
+
 
 #[macro_use]
 mod utils;
