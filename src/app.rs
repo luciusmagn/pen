@@ -620,6 +620,7 @@ impl Pencil {
 
 impl hyper::server::Handler for Pencil {
     fn handle(&self, req: HTTPRequest, mut res: HTTPResponse) {
+        debug!("Request: {}", req.uri);
         match Request::new(self, req) {
             Ok(mut request) => {
                 let response = self.handle_request(&mut request);

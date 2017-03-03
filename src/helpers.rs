@@ -140,7 +140,9 @@ pub fn send_file(filepath: &str, mimetype: Mime, as_attachment: bool) -> PencilR
 }
 
 
-/// Sends the contents of a file to the client.  Please never pass filenames to this
+/// Sends the contents of a file to the client, supporting HTTP Range requests, so it allows only partial files
+/// to be requested and sent. This doesn't support multiranges at the moment.
+/// Please never pass filenames to this
 /// function from user sources without checking them first.  Set `as_attachment` to
 /// `true` if you want to send this file with a `Content-Disposition: attachment`
 /// header.  This will return `NotFound` if filepath is not one file.
@@ -252,7 +254,8 @@ pub fn send_from_directory(directory: &str, filename: &str,
     }
 }
 
-/// Send a file from a given directory with `send_file`.  This is a secure way to
+/// Send a file from a given directory with `send_file`, supporting HTTP Range requests, so it allows only partial files
+/// to be requested and sent. This doesn't support multiranges at the moment. This is a secure way to
 /// quickly expose static files from an folder.  This will guess the mimetype
 /// for you.
 pub fn send_from_directory_range(directory: &str, filename: &str,
