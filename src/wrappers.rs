@@ -3,9 +3,8 @@
 use std::fmt;
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::io;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::{self, Read, Write, Take};
 use std::convert;
 use std::cell::RefCell;
 
@@ -362,6 +361,13 @@ impl BodyWrite for File {
         io::copy(self, body).map(|_| ())
     }
 }
+
+impl BodyWrite for Take<File> {
+    fn write_body(&mut self, body: &mut ResponseBody) -> io::Result<()> {
+        io::copy(self, body).map(|_| ())
+    }
+}
+
 
 
 /// Response type.  It is just one container with a couple of parameters

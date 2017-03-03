@@ -14,7 +14,7 @@ use types::ViewFunc;
 use types::PencilResult;
 use types::{BeforeRequestFunc, AfterRequestFunc, TeardownRequestFunc};
 use types::{HTTPErrorHandler, UserErrorHandler};
-use helpers::send_from_directory;
+use helpers::send_from_directory_range;
 use wrappers::Request;
 
 
@@ -186,7 +186,7 @@ fn send_module_static_file(request: &mut Request) -> PencilResult {
                 static_path.push(module_static_folder);
                 let static_path_str = static_path.to_str().unwrap();
                 let filename = request.view_args.get("filename").unwrap();
-                return send_from_directory(static_path_str, filename, false);
+                return send_from_directory_range(static_path_str, filename, false, request.headers().get());
             }
         }
     }
