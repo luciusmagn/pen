@@ -46,6 +46,8 @@ use http_errors::{HTTPError, NotFound, InternalServerError};
 use templating::{render_template, render_template_string, load_template};
 use module::Module;
 
+const DEFAULT_THREADS: usize = 15;
+
 
 /// The pencil type.  It acts as the central application object.  Once it is created it
 /// will act as a central registry for the view functions, the URL rules and much more.
@@ -588,7 +590,12 @@ impl Pencil {
 
     /// Runs the application on a hyper HTTP server.
     pub fn run<A: ToSocketAddrs>(self, addr: A) {
-        run_server(self, addr);
+        run_server(self, addr, DEFAULT_THREADS);
+    }
+
+    /// Runs the application on a hyper HTTP server.
+    pub fn run_threads<A: ToSocketAddrs>(self, addr: A, threads: usize) {
+        run_server(self, addr, threads);
     }
 }
 
