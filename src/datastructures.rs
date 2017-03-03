@@ -40,6 +40,8 @@ pub struct MultiDict<T> {
     map: HashMap<String, Vec<T>>,
 }
 
+use std::borrow::Borrow;
+
 impl<T> MultiDict<T> {
     pub fn new() -> MultiDict<T> {
         MultiDict {
@@ -48,9 +50,12 @@ impl<T> MultiDict<T> {
     }
 
     /// Return the first value for this key.
-    pub fn get(&self, key: &str) -> Option<&T> {
+    pub fn get<B>(&self, key: &str) -> Option<&B>
+        where T: Borrow<B>,
+              B: ?Sized
+    {
         match self.map.get(key) {
-            Some(value) => Some(&value[0]),
+            Some(value) => Some(value[0].borrow()),
             None => None
         }
     }

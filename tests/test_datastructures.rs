@@ -10,11 +10,11 @@ fn test_multi_dict_basic_interface() {
     let mut multi_dict = MultiDict::new();
     multi_dict.add("Content-Type".to_string(), "text/plain".to_string());
     multi_dict.add("X-Foo".to_string(), "bar".to_string());
-    assert!(multi_dict.get("X-Foo") != None);
-    assert!(multi_dict.get("Content-Type") != None);
+    assert!(multi_dict.get::<str>("X-Foo") != None);
+    assert!(multi_dict.get::<str>("Content-Type") != None);
 
     multi_dict.set("Content-Type", "foo/bar".to_string());
-    assert!(multi_dict.get("Content-Type").unwrap() == "foo/bar");
+    assert!(multi_dict.get::<str>("Content-Type").unwrap() == "foo/bar");
 
     multi_dict.add("X-Foo".to_string(), "bar2".to_string());
 
