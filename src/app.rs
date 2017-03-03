@@ -45,6 +45,9 @@ use testing::PencilClient;
 use http_errors::{HTTPError, NotFound, InternalServerError};
 use templating::{render_template, render_template_string, load_template};
 use module::Module;
+use typemap::{ShareMap, Key};
+use hyper::header::{IfModifiedSince, LastModified, HttpDate, CacheControl, CacheDirective};
+use time;
 
 const DEFAULT_THREADS: usize = 15;
 
@@ -66,6 +69,8 @@ pub struct Pencil {
     pub template_folder: String,
     /// The configuration for this application.
     pub config: Config,
+    /// For storing arbitrary types as "static" data.
+    pub extensions: ShareMap,
     /// The Handlebars registry used to load templates and register helpers.
     pub handlebars_registry: RwLock<Box<Handlebars>>,
     /// The url map for this pencil application.
@@ -110,6 +115,7 @@ impl Pencil {
             static_url_path: String::from("/static"),
             template_folder: String::from("templates"),
             config: default_config(),
+            extensions: ShareMap::custom(),
             handlebars_registry: RwLock::new(Box::new(Handlebars::new())),
             url_map: Map::new(),
             modules: HashMap::new(),
@@ -217,6 +223,19 @@ impl Pencil {
         rule = rule + "/<filename:path>";
         let rule_str: &str = &rule;
         self.route(rule_str, &[Method::Get], "static", send_app_static_file);
+    }
+
+    /// Enables static file handling with caching. (304 Not Modified + Max-Age) The static files are considered
+    /// "not modified" since the server was started.
+    pub fn enable_static_cached_file_handling(&mut self, max_age: ::std::time::Duration) {
+        let mut rule = self.static_url_path.clone();
+        rule = rule + "/<filename:path>";
+        let rule_str: &str = &rule;
+        let mut tm = time::now_utc();
+        tm.tm_nsec = 0;
+        self.extensions.insert::<TimeAtServerStartKey>(tm);
+        self.extensions.insert::<MaxAgeKey>(max_age);
+        self.route(rule_str, &[Method::Get], "static", send_app_static_file_with_cache);
     }
 
     /// Registers a function to run before each request.
@@ -645,3 +664,59 @@ fn send_app_static_file(request: &mut Request) -> PencilResult {
     let filename = request.view_args.get("filename").unwrap();
     send_from_directory_range(static_path_str, filename, false, request.headers().get())
 }
+
+
+
+fn check_if_cached(req: &mut Request) -> Option<PencilResult> {
+
+    let mod_time = req.app.extensions.get::<TimeAtServerStartKey>().expect("TimeAtServerStartKey should've been set up.");
+
+    match req.headers().get::<IfModifiedSince>() {
+        Some(&IfModifiedSince(HttpDate(tm))) if tm >= *mod_time => {
+            let mut cached_resp = Response::new_empty();
+            cached_resp.status_code = 304;
+            return Some(Ok(cached_resp));
+        },
+        None => { // No caching requested
+            return None;
+        },
+        Some(_) => { // Stale cache
+            return None;
+        }
+    }
+}
+
+struct MaxAgeKey;
+
+impl Key for MaxAgeKey {
+    type Value = ::std::time::Duration;
+}
+
+struct TimeAtServerStartKey;
+
+impl Key for TimeAtServerStartKey {
+    type Value = time::Tm;
+}
+
+/// View function used internally to send static files from the static folder
+/// to the browser. Using cache, and serving 304 Not Modified if possible.
+fn send_app_static_file_with_cache(request: &mut Request) -> PencilResult {
+    if let Some(resp) = check_if_cached(request) {
+        return resp;
+    }
+    let mut static_path = PathBuf::from(&request.app.root_path);
+    static_path.push(&request.app.static_folder);
+    let static_path_str = static_path.to_str().unwrap();
+    let filename = request.view_args.get("filename").unwrap();
+    let resp = send_from_directory_range(static_path_str, filename, false, request.headers().get());
+    resp.map(|mut r| {
+        let mod_time = request.app.extensions.get::<TimeAtServerStartKey>().expect("TimeAtServerStartKey should've been set up.");
+        r.headers.set(LastModified(HttpDate(*mod_time)));
+        let max_age = request.app.extensions.get::<MaxAgeKey>().expect("MaxAgeKey should've been set up.").as_secs();
+        if max_age > 0 {
+            r.headers.set(CacheControl(vec![CacheDirective::MaxAge(max_age as u32)]));
+        }
+        r
+    })
+}
+
