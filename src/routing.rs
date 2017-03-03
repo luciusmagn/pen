@@ -66,13 +66,15 @@ fn parse_rule(rule: &str) -> Vec<(Option<&str>, &str)> {
 /// The matcher holds the url regex object.
 #[derive(Clone, Debug)]
 pub struct Matcher {
-    pub regex: Regex
+    pub regex: Regex,
+    pub matches_query: bool,
 }
 
 impl Matcher {
-    pub fn new(regex: Regex) -> Matcher {
+    pub fn new(regex: Regex, matches_query: bool) -> Matcher {
         Matcher {
-            regex: regex
+            regex: regex,
+            matches_query: matches_query,
         }
     }
 }
@@ -98,6 +100,7 @@ impl<'a> From<&'a str> for Matcher {
         if !rule.starts_with('/') {
             panic!("urls must start with a leading slash");
         }
+        let matches_query = rule.contains('?');
         let is_branch = rule.ends_with('/');
 
         // Compiles the regular expression
@@ -124,7 +127,7 @@ impl<'a> From<&'a str> for Matcher {
             regex_parts.push(String::from("(?P<__suffix__>/?)"));
         }
         let regex = format!(r"^{}$", join_string(regex_parts, ""));
-        Matcher::new(Regex::new(&regex).unwrap())
+        Matcher::new(Regex::new(&regex).unwrap(), matches_query)
     }
 }
 
@@ -138,7 +141,7 @@ impl From<String> for Matcher {
 
 impl From<Regex> for Matcher {
     fn from(regex: Regex) -> Matcher {
-        Matcher::new(regex)
+        Matcher::new(regex, false)
     }
 }
 
@@ -200,7 +203,7 @@ impl Rule {
     }
 
     /// Check if the rule matches a given path.
-    pub fn matched(&self, path: String) -> Option<Result<ViewArgs, RequestSlashError>> {
+    pub fn matched(&self, path: &str) -> Option<Result<ViewArgs, RequestSlashError>> {
         match self.matcher.regex.captures(&path) {
             Some(caps) => {
                 if let Some(suffix) = caps.name("__suffix__") {
@@ -288,7 +291,16 @@ impl<'m> MapAdapter<'m> {
         let mut have_match_for = HashSet::new();
         for rule in &self.map.rules {
             let rule_view_args: ViewArgs;
-            match rule.matched(self.path.clone()) {
+            let matched = if rule.matcher.matches_query {
+                if let Some(ref query_string) = self.query_string {
+                    rule.matched(&(self.path.to_string() + "?" + query_string))
+                } else {
+                    rule.matched(&self.path)
+                }
+            } else {
+                rule.matched(&self.path)
+            };
+            match matched {
                 Some(result) => {
                     match result {
                         Ok(view_args) => {
@@ -323,7 +335,7 @@ impl<'m> MapAdapter<'m> {
     pub fn allowed_methods(&self) -> Vec<Method> {
         let mut have_match_for = HashSet::new();
         for rule in &self.map.rules {
-            match rule.matched(self.path.clone()) {
+            match rule.matched(&self.path) {
                 Some(_) => {
                     for method in &rule.methods {
                         have_match_for.insert(method.clone());
