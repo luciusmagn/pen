@@ -11,7 +11,7 @@ use std::cell::RefCell;
 use hyper;
 use hyper::server::request::Request as HttpRequest;
 use hyper::uri::RequestUri::{AbsolutePath, AbsoluteUri, Authority, Star};
-use hyper::header::{Headers, ContentLength, ContentType, Cookie};
+use hyper::header::{Headers, ContentLength, ContentType, Cookie, Host};
 use hyper::mime::Mime;
 use hyper::method::Method;
 use hyper::http::h1::HttpReader;
@@ -56,8 +56,9 @@ pub struct Request<'r, 'a, 'b: 'a> {
     pub routing_error: Option<HTTPError>,
     /// Storage for data of extensions.
     pub extensions_data: TypeMap,
+    /// The server host
+    pub host: Host,
     body: RefCell<HttpReader<&'a mut BufReader<&'b mut NetworkStream>>>,
-    host: hyper::header::Host,
     args: LazyCell<MultiDict<String>>,
     form: LazyCell<MultiDict<String>>,
     files: LazyCell<MultiDict<FilePart>>,
