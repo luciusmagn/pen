@@ -7,7 +7,7 @@ use std::error::Error;
 use std::fmt;
 
 use wrappers::{Request, Response};
-use http_errors::HTTPError;
+pub use http_errors::HTTPError;
 
 pub use self::PencilError::{
     PenHTTPError,
@@ -99,18 +99,17 @@ pub type ViewFunc = fn(&mut Request) -> PencilResult;
 
 
 /// HTTP Error handler type.
-pub type HTTPErrorHandler = fn(HTTPError) -> PencilResult;
+pub type HTTPErrorHandler = Fn(HTTPError) -> PencilResult + Send + Sync;
 /// User Error handler type.
-pub type UserErrorHandler = fn(UserError) -> PencilResult;
-
+pub type UserErrorHandler = Fn(UserError) -> PencilResult + Send + Sync;
 
 /// Before request func type.
-pub type BeforeRequestFunc = fn(&mut Request) -> Option<PencilResult>;
+pub type BeforeRequestFunc = Fn(&mut Request) -> Option<PencilResult> + Send + Sync;
 
 
 /// After request func type.
-pub type AfterRequestFunc = fn(&mut Response);
+pub type AfterRequestFunc = Fn(&Request, &mut Response) + Send + Sync;
 
 
 /// Teardown request func type.
-pub type TeardownRequestFunc = fn(Option<&PencilError>);
+pub type TeardownRequestFunc = Fn(Option<&PencilError>) + Send + Sync;

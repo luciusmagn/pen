@@ -11,11 +11,11 @@ use http_errors::NotFound;
 use app::Pencil;
 use routing::Matcher;
 use types::ViewFunc;
-use types::PencilResult;
+use types::{PencilResult, PencilError, HTTPError, UserError};
 use types::{BeforeRequestFunc, AfterRequestFunc, TeardownRequestFunc};
 use types::{HTTPErrorHandler, UserErrorHandler};
 use helpers::send_from_directory_range;
-use wrappers::Request;
+use wrappers::{Request, Response};
 
 
 /// Represents a module.
@@ -31,15 +31,15 @@ pub struct Module {
     /// The folder that contains the templates that should be used for the module.
     pub template_folder: Option<String>,
     #[doc(hidden)]
-    pub before_request_funcs: Vec<BeforeRequestFunc>,
+    pub before_request_funcs: Vec<Box<BeforeRequestFunc>>,
     #[doc(hidden)]
-    pub after_request_funcs: Vec<AfterRequestFunc>,
+    pub after_request_funcs: Vec<Box<AfterRequestFunc>>,
     #[doc(hidden)]
-    pub teardown_request_funcs: Vec<TeardownRequestFunc>,
+    pub teardown_request_funcs: Vec<Box<TeardownRequestFunc>>,
     #[doc(hidden)]
-    pub http_error_handlers: HashMap<u16, HTTPErrorHandler>,
+    pub http_error_handlers: HashMap<u16, Box<HTTPErrorHandler>>,
     #[doc(hidden)]
-    pub user_error_handlers: HashMap<String, UserErrorHandler>,
+    pub user_error_handlers: HashMap<String, Box<UserErrorHandler>>,
     deferred_functions: Vec<Box<Fn(&mut Pencil) + Send + Sync>>,
     deferred_routes: Vec<(Matcher, Vec<Method>, String, ViewFunc)>,
 }
@@ -88,59 +88,59 @@ impl Module {
 
     /// Before request for a module.  This is only executed before each request
     /// that is handled by a view function of that module.
-    pub fn before_request(&mut self, f: BeforeRequestFunc) {
-        self.before_request_funcs.push(f);
+    pub fn before_request<F: Fn(&mut Request) -> Option<PencilResult> + Send + Sync + 'static>(&mut self, f: F) {
+        self.before_request_funcs.push(Box::new(f));
     }
 
     /// Before request for the app that this module is registered on.  This is
     /// executed before each request, even if outside of a module.
-    pub fn before_app_request(&mut self, f: BeforeRequestFunc) {
-        self.record(move |app| app.before_request(f));
+    pub fn before_app_request<F: Fn(&mut Request) -> Option<PencilResult> + Send + Sync + Clone + 'static>(&mut self, f: F) {
+        self.record(move |app| app.before_request(f.clone())); // FIXME Clone can be removed when Box<FnOnce> is supported
     }
 
     /// After request for a module.  This is only executed after each request
     /// that is handled by a view function of that module.
-    pub fn after_request(&mut self, f: AfterRequestFunc) {
-        self.after_request_funcs.push(f);
+    pub fn after_request<F: Fn(&Request, &mut Response) + Send + Sync + 'static>(&mut self, f: F) {
+        self.after_request_funcs.push(Box::new(f));
     }
 
     /// After request for the app that this module is registered on.  This is
     /// executed after each request, even if outside of a module.
-    pub fn after_app_request(&mut self, f: AfterRequestFunc) {
-        self.record(move |app| app.after_request(f));
+    pub fn after_app_request<F: Fn(&Request, &mut Response) + Send + Sync + Clone + 'static>(&mut self, f: F) {
+        self.record(move |app| app.after_request(f.clone())); // FIXME Clone can be removed when Box<FnOnce> is supported
     }
  
     /// Teardown request for a module.  This is only executed when tearing down
     /// each request that is handled by a view function of that module.
-    pub fn teardown_request(&mut self, f: TeardownRequestFunc) {
-        self.teardown_request_funcs.push(f);
+    pub fn teardown_request<F: Fn(Option<&PencilError>) + Send + Sync + 'static>(&mut self, f: F) {
+        self.teardown_request_funcs.push(Box::new(f));
     }
 
     /// Teardown request for the app that this module is registered on.  This is
     /// executed when tearing down each request, even if outside of a module.
-    pub fn teardown_app_request(&mut self, f: TeardownRequestFunc) {
-        self.record(move |app| app.teardown_request(f));
+    pub fn teardown_app_request<F: Fn(Option<&PencilError>) + Send + Sync + Clone + 'static>(&mut self, f: F) {
+        self.record(move |app| app.teardown_request(f.clone())); // FIXME Clone can be removed when Box<FnOnce> is supported
     }
 
     /// Registers a http error handler that becomes active for this module only.
-    pub fn httperrorhandler(&mut self, status_code: u16, f: HTTPErrorHandler) {
-        self.http_error_handlers.insert(status_code, f);
+    pub fn httperrorhandler<F: Fn(HTTPError) -> PencilResult + Send + Sync + 'static>(&mut self, status_code: u16, f: F) {
+        self.http_error_handlers.insert(status_code, Box::new(f));
     }
 
     /// Registers an user error handler that becomes active for this module only.
-    pub fn usererrorhandler(&mut self, error_desc: &str, f: UserErrorHandler) {
-        self.user_error_handlers.insert(error_desc.to_string(), f);
+    pub fn usererrorhandler<F: Fn(UserError) -> PencilResult + Send + Sync + 'static>(&mut self, error_desc: &str, f: F) {
+        self.user_error_handlers.insert(error_desc.to_string(), Box::new(f));
     }
 
     /// Registers a http error handler for all requests of the application.
-    pub fn app_httperrorhandler(&mut self, status_code: u16, f: HTTPErrorHandler) {
-        self.record(move |app| app.httperrorhandler(status_code, f));
+    pub fn app_httperrorhandler<F: Fn(HTTPError) -> PencilResult + Send + Sync + Clone + 'static>(&mut self, status_code: u16, f: F) {
+        self.record(move |app| app.httperrorhandler(status_code, f.clone()));
     }
 
     /// Registers an user error handler for all requests of the application.
-    pub fn app_usererrorhandler(&mut self, error_desc: &str, f: UserErrorHandler) {
+    pub fn app_usererrorhandler<F: Fn(UserError) -> PencilResult + Send + Sync + Clone + 'static>(&mut self, error_desc: &str, f: F) {
         let desc = error_desc.to_string();
-        self.record(move |app| app.register_user_error_handler(&desc, f));
+        self.record(move |app| app.register_user_error_handler(&desc, f.clone()));
     }
 
     /// Register this module.

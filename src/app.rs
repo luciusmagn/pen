@@ -72,11 +72,11 @@ pub struct Pencil {
     pub modules: HashMap<String, Module>,
     /// A dictionary of all view functions registered.  The key will be endpoint.
     view_functions: HashMap<String, ViewFunc>,
-    before_request_funcs: Vec<BeforeRequestFunc>,
-    after_request_funcs: Vec<AfterRequestFunc>,
-    teardown_request_funcs: Vec<TeardownRequestFunc>,
-    http_error_handlers: HashMap<u16, HTTPErrorHandler>,
-    user_error_handlers: HashMap<String, UserErrorHandler>,
+    before_request_funcs: Vec<Box<BeforeRequestFunc>>,
+    after_request_funcs: Vec<Box<AfterRequestFunc>>,
+    teardown_request_funcs: Vec<Box<TeardownRequestFunc>>,
+    http_error_handlers: HashMap<u16, Box<HTTPErrorHandler>>,
+    user_error_handlers: HashMap<String, Box<UserErrorHandler>>,
 }
 
 fn default_config() -> Config {
@@ -218,32 +218,32 @@ impl Pencil {
     }
 
     /// Registers a function to run before each request.
-    pub fn before_request(&mut self, f: BeforeRequestFunc) {
-        self.before_request_funcs.push(f);
+    pub fn before_request<F: Fn(&mut Request) -> Option<PencilResult> + Send + Sync + 'static>(&mut self, f: F) {
+        self.before_request_funcs.push(Box::new(f));
     }
 
     /// Registers a function to run after each request.  Your function
     /// must take a response object and modify it.
-    pub fn after_request(&mut self, f: AfterRequestFunc) {
-        self.after_request_funcs.push(f);
+    pub fn after_request<F: Fn(&Request, &mut Response) + Send + Sync + 'static>(&mut self, f: F) {
+        self.after_request_funcs.push(Box::new(f));
     }
 
     /// Registers a function to run at the end of each request,
     /// regardless of whether there was an error or not.
-    pub fn teardown_request(&mut self, f: TeardownRequestFunc) {
-        self.teardown_request_funcs.push(f);
+    pub fn teardown_request<F: Fn(Option<&PencilError>) + Send + Sync + 'static>(&mut self, f: F) {
+        self.teardown_request_funcs.push(Box::new(f));
     }
 
     /// Registers a function as one http error handler.
     /// Same to `httperrorhandler`.
-    pub fn register_http_error_handler(&mut self, status_code: u16, f: HTTPErrorHandler) {
-        self.http_error_handlers.insert(status_code, f);
+    pub fn register_http_error_handler<F: Fn(HTTPError) -> PencilResult + Send + Sync + 'static>(&mut self, status_code: u16, f: F) {
+        self.http_error_handlers.insert(status_code, Box::new(f));
     }
 
     /// Registers a function as one user error handler.
     /// Same to `usererrorhandler`.
-    pub fn register_user_error_handler(&mut self, error_desc: &str, f: UserErrorHandler) {
-        self.user_error_handlers.insert(error_desc.to_string(), f);
+    pub fn register_user_error_handler<F: Fn(UserError) -> PencilResult + Send + Sync + 'static>(&mut self, error_desc: &str, f: F) {
+        self.user_error_handlers.insert(error_desc.to_string(), Box::new(f));
     }
 
     /// Registers a function as one http error handler.  Example:
@@ -265,7 +265,7 @@ impl Pencil {
     ///     app.httperrorhandler(404, page_not_found);
     /// }
     /// ```
-    pub fn httperrorhandler(&mut self, status_code: u16, f: HTTPErrorHandler) {
+    pub fn httperrorhandler<F: Fn(HTTPError) -> PencilResult + Send + Sync + 'static>(&mut self, status_code: u16, f: F) {
         self.register_http_error_handler(status_code, f);
     }
 
@@ -346,7 +346,7 @@ impl Pencil {
     ///     app.usererrorhandler("MyErr", my_err_handler);
     /// }
     /// ```
-    pub fn usererrorhandler(&mut self, error_desc: &str, f: UserErrorHandler) {
+    pub fn usererrorhandler<F: Fn(UserError) -> PencilResult + Send + Sync + 'static>(&mut self, error_desc: &str, f: F) {
         self.register_user_error_handler(error_desc, f);
     }
 
@@ -431,11 +431,11 @@ impl Pencil {
     fn process_response(&self, request: &Request, response: &mut Response) {
         if let Some(module) = self.get_module(request.module_name()) {
             for func in module.after_request_funcs.iter().rev() {
-                func(response);
+                func(request, response);
             }
         }
         for func in self.after_request_funcs.iter().rev() {
-            func(response);
+            func(request, response);
         }
     }
 
