@@ -2,6 +2,5 @@ sudo: false
 language: rust
 rust:
   - stable
-
-script:
-  - make test
+  - unstable
+  - nightly

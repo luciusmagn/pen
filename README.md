@@ -1,18 +1,15 @@
-#Sharp Pencil (A Pencil fork)
+# light_pencil (A Sharp Pencil fork (A Pencil fork))
 
-[![Build Status](https://travis-ci.org/fengsp/pencil.svg?branch=master)](https://travis-ci.org/fengsp/pencil) [![Crates.io Version](https://img.shields.io/crates/v/pencil.svg)](https://crates.io/crates/pencil/) [![Crates.io LICENSE](https://img.shields.io/crates/l/pencil.svg)](https://crates.io/crates/pencil/)
+[![Build Status](https://travis-ci.org/luciusmagn/light_pencil.svg?branch=master)](https://travis-ci.org/luciusmagn/light_pencil) [![Crates.io Version](https://img.shields.io/crates/v/pencil.svg)](https://crates.io/crates/pencil/) [![Crates.io LICENSE](https://img.shields.io/crates/l/light_pencil.svg)](https://crates.io/crates/light_pencil/)
 
 A microframework for Rust inspired by Flask.
 
 ```rust
-extern crate pencil;
-
-use sharp_pencil::{Pencil, Request, Response, PencilResult};
-
+extern crate light_pencil;
+use light_pencil::{Pencil, Request, Response, PencilResult};
 fn hello(_: &mut Request) -> PencilResult {
     Ok(Response::from("Hello World!"))
 }
-
 fn main() {
     let mut app = Pencil::new("/web/hello");
     app.get("/", "hello", hello);
@@ -21,5 +18,3 @@ fn main() {
 ```
 
 One simple guide: https://fengsp.github.io/blog/2016/3/introducing-pencil/
-
-If you feel anything wrong, feedbacks or pull requests are welcome.
