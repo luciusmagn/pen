@@ -37,24 +37,12 @@
 //! }
 //! ```
 
-#![allow(unused_attributes)]
-#![crate_name = "sharp_pencil"]
-#![crate_type = "lib"]
-#![doc(html_logo_url = "https://raw.githubusercontent.com/fengsp/pencil/master/logo/pencil.png",
-       html_favicon_url = "https://raw.githubusercontent.com/fengsp/pencil/master/logo/favicon.ico",
-       html_root_url = "http://fengsp.github.io/pencil/")]
-
 #![deny(non_camel_case_types)]
 
-#[macro_use]
-extern crate log;
 extern crate hyper;
-extern crate serde;
-extern crate serde_json;
 extern crate regex;
 extern crate url;
 extern crate formdata;
-extern crate handlebars;
 extern crate typemap;
 extern crate mime;
 extern crate mime_guess;
@@ -84,10 +72,6 @@ pub use wrappers::{
 pub use http_errors::{
     HTTPError
 };
-pub use json::jsonify;
-pub use config::{
-    Config,
-};
 pub use helpers::{
     PathBound,
     safe_join,
@@ -98,7 +82,6 @@ pub use helpers::{
     send_from_directory,
 };
 pub use module::Module;
-pub use handlebars::Handlebars;
 
 pub use hyper::header::{Cookie, SetCookie, Headers, ContentLength, ContentType};
 
@@ -109,16 +92,11 @@ pub mod http_errors;
 pub mod datastructures;
 pub mod wrappers;
 pub mod routing;
-pub mod json;
-pub mod config;
 pub mod helpers;
 pub mod method;
-mod testing;
 mod app;
 mod types;
-mod logging;
 mod serving;
 mod httputils;
-mod templating;
 mod formparser;
 mod module;

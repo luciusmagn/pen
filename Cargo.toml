@@ -1,23 +1,19 @@
 [package]
-name = "sharp_pencil"
+name = "light_pencil"
 version = "0.4.3"
 authors = ["Shipeng Feng <fsp261@gmail.com>", "Pyry Kontio <pyry.kontio@drasa.eu>"]
 keywords = ["web", "framework", "server", "http"]
 license = "BSD-3-Clause"
 readme = "README.md"
-repository = "https://github.com/golddranks/sharp_pencil"
-homepage = "https://github.com/golddranks/sharp_pencil"
+repository = "https://github.com/luciusmagn/light_pencil"
+homepage = "https://github.com/luciusmagnn/light_pencil"
 documentation = "http://fengsp.github.io/pencil/"
-description = "A micro web framework for Rust. (A Pencil fork)"
+description = "A micro web framework for Rust. (A fork of a Pencil fork)"
 categories = ["web-programming::http-server"]
 
 [dependencies]
-regex = "0.2"
-serde = "0.9"
-serde_json = "0.9"
-url = "1.2.1"
-log = "0.3.6"
-handlebars = { version = "0.25", features = ["serde_type"] }
+regex = "0.2.2"
+url = "1.5.1"
 typemap = "0.3.3"
 mime = "0.2.2"
 mime_guess = "1.8.0"

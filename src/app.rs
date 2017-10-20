@@ -1,7 +1,6 @@
 //! This module implements the central application object.
 
 use std::convert::Into;
-use std::sync::RwLock;
 use std::fmt;
 use std::collections::HashMap;
 use std::error::Error;
@@ -9,9 +8,6 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::net::ToSocketAddrs;
 
-use serde_json::{Value};
-use serde::Serialize;
-use handlebars::Handlebars;
 use hyper;
 use hyper::method::Method;
 use hyper::status::StatusCode;
@@ -37,13 +33,12 @@ use wrappers::{
     Response,
 };
 use helpers::{PathBound, send_from_directory_range, redirect};
-use config::Config;
-use logging;
+//use config::Config;
+//use logging;
 use serving::run_server;
 use routing::{Map, Rule, Matcher};
-use testing::PencilClient;
+//use testing::PencilClient;
 use http_errors::{HTTPError, NotFound, InternalServerError};
-use templating::{render_template, render_template_string, load_template};
 use module::Module;
 use typemap::{ShareMap, Key};
 use hyper::header::{IfModifiedSince, LastModified, HttpDate, CacheControl, CacheDirective};
@@ -67,12 +62,8 @@ pub struct Pencil {
     /// The folder that contains the templates that should be used for the application.
     /// Defaults to `''templates''` folder in the root path of the application.
     pub template_folder: String,
-    /// The configuration for this application.
-    pub config: Config,
     /// For storing arbitrary types as "static" data.
     pub extensions: ShareMap,
-    /// The Handlebars registry used to load templates and register helpers.
-    pub handlebars_registry: RwLock<Box<Handlebars>>,
     /// The url map for this pencil application.
     pub url_map: Map,
     /// All the attached modules in a hashmap by name.
@@ -84,13 +75,6 @@ pub struct Pencil {
     teardown_request_funcs: Vec<Box<TeardownRequestFunc>>,
     http_error_handlers: HashMap<u16, Box<HTTPErrorHandler>>,
     user_error_handlers: HashMap<String, Box<UserErrorHandler>>,
-}
-
-fn default_config() -> Config {
-    let mut config = Config::new();
-    config.set("DEBUG", Value::Bool(false));
-    config.set("TESTING", Value::Bool(false));
-    config
 }
 
 impl Pencil {
@@ -114,9 +98,7 @@ impl Pencil {
             static_folder: String::from("static"),
             static_url_path: String::from("/static"),
             template_folder: String::from("templates"),
-            config: default_config(),
             extensions: ShareMap::custom(),
-            handlebars_registry: RwLock::new(Box::new(Handlebars::new())),
             url_map: Map::new(),
             modules: HashMap::new(),
             view_functions: HashMap::new(),
@@ -131,34 +113,13 @@ impl Pencil {
     /// The debug flag.  This field is configured from the config
     /// with the `DEBUG` configuration key.  Defaults to `False`.
     pub fn is_debug(&self) -> bool {
-        self.config.get_boolean("DEBUG", false)
+        false
     }
 
     /// The testing flag.  This field is configured from the config
     /// with the `TESTING` configuration key.  Defaults to `False`.
     pub fn is_testing(&self) -> bool {
-        self.config.get_boolean("TESTING", false)
-    }
-
-    /// Set the debug flag.  This field is configured from the config
-    /// with the `DEBUG` configuration key.  Set this to `True` to
-    /// enable debugging of the application.
-    pub fn set_debug(&mut self, flag: bool) {
-        self.config.set("DEBUG", Value::Bool(flag));
-    }
-
-    /// Set the testing flag.  This field is configured from the config
-    /// with the `TESTING` configuration key.  Set this to `True` to
-    /// enable the test mode of the application.
-    pub fn set_testing(&mut self, flag: bool) {
-        self.config.set("TESTING", Value::Bool(flag));
-    }
-
-    /// Set global log level based on the application's debug flag.
-    /// This is only useful for `env_logger` crate users.
-    /// On debug mode, this turns on all debug logging.
-    pub fn set_log_level(&self) {
-        logging::set_log_level(self);
+        false
     }
 
     /// This is used to register a view function for a given URL rule.
@@ -371,19 +332,6 @@ impl Pencil {
         self.register_user_error_handler(error_desc, f);
     }
 
-    /// Creates a test client for this application, you can use it
-    /// like this:
-    ///
-    /// ```ignore
-    /// let client = app.test_client();
-    /// let response = client.get('/');
-    /// assert!(response.code, 200);
-    /// ```
-    #[allow(dead_code)]
-    fn test_client(&self) -> PencilClient {
-        PencilClient::new(self)
-    }
-
     /// Called before the actual request dispatching, you can return value
     /// from here and stop the further request handling.
     fn preprocess_request(&self, request: &mut Request) -> Option<PencilResult> {
@@ -521,7 +469,7 @@ impl Pencil {
 
     /// Logs an error.
     fn log_error(&self, request: &Request, e: &PencilError) {
-        error!("Error on {} [{}]: {}", request.path(), request.method(), e.description());
+        eprintln!("Error on {} [{}]: {}", request.path(), request.method(), e.description());
     }
 
     /// Dispatches the request and performs request pre and postprocessing
@@ -542,53 +490,6 @@ impl Pencil {
             },
             Err(e) => Err(e),
         }
-    }
-
-    /// Load and compile and register a template.
-    pub fn register_template(&mut self, template_name: &str) {
-        let registry_write_rv = self.handlebars_registry.write();
-        if registry_write_rv.is_err() {
-            panic!("Can't write handlebars registry");
-        }
-        let mut registry = registry_write_rv.unwrap();
-        match load_template(self, template_name) {
-            Some(source_rv) => {
-                match source_rv {
-                    Ok(source) => {
-                        if let Err(err) = registry.register_template_string(template_name, source) {
-                            panic!(format!("Template compile error: {}", err));
-                        }
-                    },
-                    Err(err) => {
-                        panic!(format!("Template {} can't be loaded: {}", template_name, err));
-                    }
-                }
-            },
-            None => {
-                panic!(format!("Template not found: {}", template_name));
-            }
-        }
-    }
-
-    /// We use `handlebars-rs` as template engine.
-    /// Renders a template from the template folder with the given context.
-    /// The template name is the name of the template to be rendered.
-    /// The context is the variables that should be available in the template.
-    pub fn render_template<T: Serialize>(&self, template_name: &str, context: &T)
-    -> PencilResult
-    {
-        render_template(self, template_name, context)
-    }
-
-    /// We use `handlebars-rs` as template engine.
-    /// Renders a template from the given template source string
-    /// with the given context.
-    /// The source is the sourcecode of the template to be rendered.
-    /// The context is the variables that should be available in the template.
-    pub fn render_template_string<T: Serialize>(&self, source: &str, context: &T)
-    -> PencilResult
-    {
-        render_template_string(self, source, context)
     }
 
     /// The actual application handler.
@@ -620,7 +521,6 @@ impl Pencil {
 
 impl hyper::server::Handler for Pencil {
     fn handle(&self, req: HTTPRequest, mut res: HTTPResponse) {
-        debug!("Request: {}", req.uri);
         match Request::new(self, req) {
             Ok(mut request) => {
                 let response = self.handle_request(&mut request);
@@ -665,8 +565,6 @@ fn send_app_static_file(request: &mut Request) -> PencilResult {
     let filename = request.view_args.get("filename").unwrap();
     send_from_directory_range(static_path_str, filename, false, request.headers().get())
 }
-
-
 
 fn check_if_cached(req: &mut Request) -> Option<PencilResult> {
 

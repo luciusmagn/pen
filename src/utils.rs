@@ -8,7 +8,7 @@ macro_rules! try_return(
     ($e:expr) => {{
         match $e {
             Ok(v) => v,
-            Err(e) => { error!("Error: {}", e); return; }
+            Err(e) => { eprintln!("Error: {}", e); return; }
         }
     }}
 );

@@ -20,7 +20,6 @@ use hyper::buffer::BufReader;
 use url::Url;
 use url::form_urlencoded;
 use formdata::FilePart;
-use serde_json;
 use typemap::TypeMap;
 
 use app::Pencil;
@@ -62,7 +61,6 @@ pub struct Request<'r, 'a, 'b: 'a> {
     args: LazyCell<MultiDict<String>>,
     form: LazyCell<MultiDict<String>>,
     files: LazyCell<MultiDict<FilePart>>,
-    cached_json: LazyCell<Option<serde_json::Value>>
 }
 
 impl<'r, 'a, 'b: 'a> Request<'r, 'a, 'b> {
@@ -106,7 +104,6 @@ impl<'r, 'a, 'b: 'a> Request<'r, 'a, 'b> {
             args: LazyCell::new(),
             form: LazyCell::new(),
             files: LazyCell::new(),
-            cached_json: LazyCell::new(),
         })
     }
 
@@ -170,26 +167,6 @@ impl<'r, 'a, 'b: 'a> Request<'r, 'a, 'b> {
     fn content_type(&self) -> Option<ContentType> {
         let content_type: Option<&ContentType> = self.headers.get();
         content_type.cloned()
-    }
-
-    /// Parses the incoming JSON request data.
-    pub fn get_json(&self) -> &Option<serde_json::Value> {
-        if !self.cached_json.filled() {
-            let mut data = String::from("");
-            let rv = match self.body.borrow_mut().read_to_string(&mut data) {
-                Ok(_) => {
-                    match serde_json::from_str(&data) {
-                        Ok(json) => Some(json),
-                        Err(_) => None
-                    }
-                },
-                Err(_) => {
-                    None
-                }
-            };
-            self.cached_json.fill(rv).expect("This was checked to be empty!");
-        }
-        self.cached_json.borrow().expect("This is checked to be always filled")
     }
 
     /// This method is used internally to retrieve submitted data.
