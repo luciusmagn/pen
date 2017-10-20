@@ -12,11 +12,11 @@ description = "A micro web framework for Rust. (A fork of a Pencil fork)"
 categories = ["web-programming::http-server"]
 
 [dependencies]
-regex = "0.2"
-url = "1.2.1"
+regex = "0.2.2"
+url = "1.5.1"
 typemap = "0.3.3"
-mime = "0.2.2"
-mime_guess = "1.8.0"
+mime = "0.3.5"
+mime_guess = "1.8.2"
 hyper = "0.10"
-formdata = "0.12.0"
-lazycell = "0.5"
+formdata = "0.12.2"
+lazycell = "0.5.1"

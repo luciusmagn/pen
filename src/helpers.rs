@@ -8,8 +8,7 @@ use hyper::header::{Location, ContentType, Range, ContentRange, ContentLength};
 use hyper::header::ByteRangeSpec::{FromTo, Last, AllFrom};
 use hyper::header::ContentRangeSpec::{Bytes};
 
-use mime_guess::guess_mime_type;
-use mime::Mime;
+use mime_guess::{guess_mime_type, Mime};
 
 use wrappers::Response;
 use types::{

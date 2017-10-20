@@ -1,5 +1,3 @@
-//! This module implements simple request and response objects.
-
 use std::fmt;
 use std::collections::HashMap;
 use std::net::SocketAddr;
