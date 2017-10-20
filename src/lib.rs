@@ -38,6 +38,9 @@
 //! ```
 
 #![deny(non_camel_case_types)]
+#![allow(unknown_lints,
+         new_without_default_derive,
+         type_complexity)]
 
 extern crate hyper;
 extern crate regex;

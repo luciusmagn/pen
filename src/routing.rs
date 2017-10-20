@@ -113,7 +113,7 @@ impl<'a> From<&'a str> for Matcher {
                         "int" => r"\d+",
                         "float" => r"\d+\.\d+",
                         "path" => "[^/].*?",
-                        _ => { panic!("the converter {} does not exist", converter); }
+                        _ => { panic!("the converter {} does not exist", converter) }
                     };
                     regex_parts.push(format!("(?P<{}>{})", variable, re));
                 },
@@ -126,7 +126,7 @@ impl<'a> From<&'a str> for Matcher {
         if is_branch {
             regex_parts.push(String::from("(?P<__suffix__>/?)"));
         }
-        let regex = format!(r"^{}$", join_string(regex_parts, ""));
+        let regex = format!(r"^{}$", join_string(&regex_parts, ""));
         Matcher::new(Regex::new(&regex).unwrap(), matches_query)
     }
 }
@@ -204,7 +204,7 @@ impl Rule {
 
     /// Check if the rule matches a given path.
     pub fn matched(&self, path: &str) -> Option<Result<ViewArgs, RequestSlashError>> {
-        match self.matcher.regex.captures(&path) {
+        match self.matcher.regex.captures(path) {
             Some(caps) => {
                 if let Some(suffix) = caps.name("__suffix__") {
                     if suffix.as_str().is_empty() {
@@ -234,9 +234,7 @@ pub struct Map {
 }
 
 impl Default for Map {
-    fn default() -> Map {
-        Map::new()
-    }
+    fn default() -> Map { Map::new() }
 }
 
 impl Map {
@@ -278,8 +276,7 @@ impl<'m> MapAdapter<'m> {
     }
 
     fn make_redirect_url(&self) -> String {
-        let mut redirect_path = String::from("");
-        redirect_path = redirect_path + &self.path.trim_left_matches('/') + "/";
+        let redirect_path = self.path.trim_left_matches('/').to_owned() + "/";
         let mut suffix = String::from("");
         if let Some(ref query_string) = self.query_string {
             suffix = suffix + "?" + query_string;

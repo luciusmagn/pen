@@ -160,7 +160,7 @@ impl Module {
         };
         if let Some(static_url_path) = static_url_path {
             let mut rule = static_url_path.clone();
-            rule = rule + "/<filename:path>";
+            rule += "/<filename:path>";
             self.route(rule, &[Method::Get], "static", send_module_static_file);
         }
         let deferred_routes = mem::replace(&mut self.deferred_routes, Vec::new());
@@ -184,9 +184,7 @@ fn send_module_static_file(request: &mut Request) -> PencilResult {
             if let Some(ref module_static_folder) = module.static_folder {
                 let mut static_path = PathBuf::from(&module.root_path);
                 static_path.push(module_static_folder);
-                let static_path_str = static_path.to_str().unwrap();
-                let filename = request.view_args.get("filename").unwrap();
-                return send_from_directory_range(static_path_str, filename, false, request.headers().get());
+                return send_from_directory_range(static_path.to_str().unwrap(), &request.view_args["filename"], false, request.headers().get());
             }
         }
     }

@@ -85,31 +85,30 @@ impl<T> MultiDict<T> {
     
     /// An iterator of `(key, value)` pairs.
     /// The value will be first value of each key.
-    pub fn iter<'a>(&'a self) -> MultiDictIter<'a, T> {
+    pub fn iter(&self) -> MultiDictIter<T> {
         fn first<'a, 'b, A, B>(kvpair: (&'a A, &'b Vec<B>)) -> (&'a A, &'b B) { (kvpair.0, &kvpair.1[0]) }
-        let first: for<'b, 'c> fn((&'b String, &'c Vec<T>)) -> (&'b String, &'c T) = first;
         MultiDictIter { inner: self.listiter().map(first) }
     }
 
     /// An iterator of `(key, values)` pairs.
-    pub fn listiter<'a>(&'a self) -> hash_map::Iter<'a, String, Vec<T>> {
+    pub fn listiter(&self) -> hash_map::Iter<String, Vec<T>> {
         self.map.iter()
     }
 
     /// An iterator visiting all keys in arbitrary order.
-    pub fn keys<'a>(&'a self) -> hash_map::Keys<'a, String, Vec<T>> {
+    pub fn keys(&self) -> hash_map::Keys<String, Vec<T>> {
         self.map.keys()
     }
 
     /// An iterator of the first value on every key's value list.
-    pub fn values<'a>(&'a self) -> MultiDictValues<'a, T> {
-        fn first<'a, A>(list: &'a Vec<A>) -> &'a A { &list[0] }
-        let first: for<'b> fn(&'b Vec<T>) -> &'b T = first;
+    pub fn values(&self) -> MultiDictValues<T> {
+        #[allow(ptr_arg)]
+        fn first<A>(list: &Vec<A>) -> &A { &list[0] }
         MultiDictValues { inner: self.listvalues().map(first) }
     }
 
     /// An iterator of all values corresponding to a key.
-    pub fn listvalues<'a>(&'a self) -> hash_map::Values<'a, String, Vec<T>> {
+    pub fn listvalues(&self) -> hash_map::Values<String, Vec<T>> {
         self.map.values()
     }
 }

@@ -257,12 +257,12 @@ impl<'r, 'a, 'b: 'a> Request<'r, 'a, 'b> {
 
     /// The current url.
     pub fn url(&self) -> String {
-        self.host_url() + &self.full_path().trim_left_matches('/')
+        self.host_url() + self.full_path().trim_left_matches('/')
     }
 
     /// The current url without the query string.
     pub fn base_url(&self) -> String {
-        self.host_url() + &self.path().trim_left_matches('/')
+        self.host_url() + self.path().trim_left_matches('/')
     }
 
     /// Whether the request is secure (https).

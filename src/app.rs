@@ -181,22 +181,20 @@ impl Pencil {
     /// Enables static file handling.
     pub fn enable_static_file_handling(&mut self) {
         let mut rule = self.static_url_path.clone();
-        rule = rule + "/<filename:path>";
-        let rule_str: &str = &rule;
-        self.route(rule_str, &[Method::Get], "static", send_app_static_file);
+        rule += "/<filename:path>";
+        self.route(&rule as &str, &[Method::Get], "static", send_app_static_file);
     }
 
     /// Enables static file handling with caching. (304 Not Modified + Max-Age) The static files are considered
     /// "not modified" since the server was started.
     pub fn enable_static_cached_file_handling(&mut self, max_age: ::std::time::Duration) {
         let mut rule = self.static_url_path.clone();
-        rule = rule + "/<filename:path>";
-        let rule_str: &str = &rule;
+        rule += "/<filename:path>";
         let mut tm = time::now_utc();
         tm.tm_nsec = 0;
         self.extensions.insert::<TimeAtServerStartKey>(tm);
         self.extensions.insert::<MaxAgeKey>(max_age);
-        self.route(rule_str, &[Method::Get], "static", send_app_static_file_with_cache);
+        self.route(&rule as &str, &[Method::Get], "static", send_app_static_file_with_cache);
     }
 
     /// Registers a function to run before each request.
@@ -498,14 +496,14 @@ impl Pencil {
         match self.full_dispatch_request(request) {
             Ok(response) => {
                 self.do_teardown_request(request, None);
-                return response;
+                response
             },
             Err(e) => {
                 let response = self.handle_error(request, &e);
                 self.do_teardown_request(request, Some(&e));
-                return response;
+                response
             }
-        };
+        }
     }
 
     /// Runs the application on a hyper HTTP server.
@@ -561,9 +559,7 @@ impl fmt::Debug for Pencil {
 fn send_app_static_file(request: &mut Request) -> PencilResult {
     let mut static_path = PathBuf::from(&request.app.root_path);
     static_path.push(&request.app.static_folder);
-    let static_path_str = static_path.to_str().unwrap();
-    let filename = request.view_args.get("filename").unwrap();
-    send_from_directory_range(static_path_str, filename, false, request.headers().get())
+    send_from_directory_range(static_path.to_str().unwrap(), &request.view_args["filename"], false, request.headers().get())
 }
 
 fn check_if_cached(req: &mut Request) -> Option<PencilResult> {
@@ -574,14 +570,9 @@ fn check_if_cached(req: &mut Request) -> Option<PencilResult> {
         Some(&IfModifiedSince(HttpDate(tm))) if tm >= *mod_time => {
             let mut cached_resp = Response::new_empty();
             cached_resp.status_code = 304;
-            return Some(Ok(cached_resp));
+            Some(Ok(cached_resp))
         },
-        None => { // No caching requested
-            return None;
-        },
-        Some(_) => { // Stale cache
-            return None;
-        }
+        _ => None,
     }
 }
 
@@ -606,7 +597,7 @@ fn send_app_static_file_with_cache(request: &mut Request) -> PencilResult {
     let mut static_path = PathBuf::from(&request.app.root_path);
     static_path.push(&request.app.static_folder);
     let static_path_str = static_path.to_str().unwrap();
-    let filename = request.view_args.get("filename").unwrap();
+    let filename = &request.view_args["filename"];
     let resp = send_from_directory_range(static_path_str, filename, false, request.headers().get());
     resp.map(|mut r| {
         let mod_time = request.app.extensions.get::<TimeAtServerStartKey>().expect("TimeAtServerStartKey should've been set up.");

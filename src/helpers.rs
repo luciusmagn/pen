@@ -96,7 +96,7 @@ pub fn redirect(location: &str, code: u16) -> PencilResult {
 
 
 /// Replace special characters "&", "<", ">" and (") to HTML-safe characters.
-pub fn escape(s: String) -> String {
+pub fn escape(s: &str) -> String {
     s.replace("&", "&amp;").replace("<", "&lt;")
      .replace(">", "&gt;").replace("\"", "&quot;")
 }
