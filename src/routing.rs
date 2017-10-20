@@ -284,12 +284,8 @@ impl<'m> MapAdapter<'m> {
             let matched = if rule.matcher.matches_query {
                 if let Some(ref query_string) = self.query_string {
                     rule.matched(&(self.path.to_string() + "?" + query_string))
-                } else {
-                    rule.matched(&self.path)
-                }
-            } else {
-                rule.matched(&self.path)
-            };
+                } else { rule.matched(&self.path) }
+            } else { rule.matched(&self.path) };
             match matched {
                 Some(result) => {
                     match result {
@@ -320,18 +316,13 @@ impl<'m> MapAdapter<'m> {
         MapAdapterMatched::MatchedError(NotFound)
     }
 
-    /// Get the valid methods that match for the given path.
     pub fn allowed_methods(&self) -> Vec<Method> {
         let mut have_match_for = HashSet::new();
         for rule in &self.map.rules {
-            match rule.matched(&self.path) {
-                Some(_) => {
-                    for method in &rule.methods {
-                        have_match_for.insert(method.clone());
-                    }
-                    continue;
-                },
-                None => continue,
+            if let Some(_) = rule.matched(&self.path) {
+                for method in &rule.methods {
+                    have_match_for.insert(method.clone());
+                }
             }
         }
         let mut allowed_methods = Vec::new();

@@ -35,9 +35,7 @@ use serving::run_server;
 use routing::{Map, Rule, Matcher};
 use http_errors::{HTTPError, NotFound, InternalServerError};
 use module::Module;
-use typemap::{ShareMap, Key};
-use hyper::header::{IfModifiedSince, LastModified, HttpDate, CacheControl, CacheDirective};
-use time;
+use typemap::ShareMap;
 
 const DEFAULT_THREADS: usize = 15;
 
@@ -78,12 +76,8 @@ impl Pencil {
         }
     }
 
-    pub fn is_debug(&self) -> bool {
-        false
-    }
-    pub fn is_testing(&self) -> bool {
-        false
-    }
+    pub fn is_debug(&self) -> bool { false }
+    pub fn is_testing(&self) -> bool { false }
 
     pub fn route<M: Into<Matcher>, N: AsRef<[Method]>>(&mut self, rule: M, methods: N, endpoint: &str, view_func: ViewFunc) {
         self.add_url_rule(rule.into(), methods.as_ref(), endpoint, view_func);
@@ -120,19 +114,8 @@ impl Pencil {
     }
 
     pub fn enable_static_file_handling(&mut self) {
-        let mut rule = self.static_url_path.clone();
-        rule += "/<filename:path>";
+        let rule = self.static_url_path.clone() + "/<filename:path>";
         self.route(&rule as &str, &[Method::Get], "static", send_app_static_file);
-    }
-
-    pub fn enable_static_cached_file_handling(&mut self, max_age: ::std::time::Duration) {
-        let mut rule = self.static_url_path.clone();
-        rule += "/<filename:path>";
-        let mut tm = time::now_utc();
-        tm.tm_nsec = 0;
-        self.extensions.insert::<TimeAtServerStartKey>(tm);
-        self.extensions.insert::<MaxAgeKey>(max_age);
-        self.route(&rule as &str, &[Method::Get], "static", send_app_static_file_with_cache);
     }
 
     pub fn before_request<F: Fn(&mut Request) -> Option<PencilResult> + Send + Sync + 'static>(&mut self, f: F) {
@@ -364,49 +347,3 @@ fn send_app_static_file(request: &mut Request) -> PencilResult {
     static_path.push(&request.app.static_folder);
     send_from_directory_range(static_path.to_str().unwrap(), &request.view_args["filename"], false, request.headers().get())
 }
-
-fn check_if_cached(req: &mut Request) -> Option<PencilResult> {
-    let mod_time = req.app.extensions.get::<TimeAtServerStartKey>().expect("TimeAtServerStartKey should've been set up.");
-
-    match req.headers().get::<IfModifiedSince>() {
-        Some(&IfModifiedSince(HttpDate(tm))) if tm >= *mod_time => {
-            let mut cached_resp = Response::new_empty();
-            cached_resp.status_code = 304;
-            Some(Ok(cached_resp))
-        },
-        _ => None,
-    }
-}
-
-struct MaxAgeKey;
-
-impl Key for MaxAgeKey {
-    type Value = ::std::time::Duration;
-}
-
-struct TimeAtServerStartKey;
-
-impl Key for TimeAtServerStartKey {
-    type Value = time::Tm;
-}
-
-fn send_app_static_file_with_cache(request: &mut Request) -> PencilResult {
-    if let Some(resp) = check_if_cached(request) {
-        return resp;
-    }
-    let mut static_path = PathBuf::from(&request.app.root_path);
-    static_path.push(&request.app.static_folder);
-    let static_path_str = static_path.to_str().unwrap();
-    let filename = &request.view_args["filename"];
-    let resp = send_from_directory_range(static_path_str, filename, false, request.headers().get());
-    resp.map(|mut r| {
-        let mod_time = request.app.extensions.get::<TimeAtServerStartKey>().expect("TimeAtServerStartKey should've been set up.");
-        r.headers.set(LastModified(HttpDate(*mod_time)));
-        let max_age = request.app.extensions.get::<MaxAgeKey>().expect("MaxAgeKey should've been set up.").as_secs();
-        if max_age > 0 {
-            r.headers.set(CacheControl(vec![CacheDirective::MaxAge(max_age as u32)]));
-        }
-        r
-    })
-}
-

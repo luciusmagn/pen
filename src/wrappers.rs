@@ -179,9 +179,7 @@ impl<'r, 'a, 'b: 'a> Request<'r, 'a, 'b> {
         let query_string = self.query_string();
         if query_string.is_some() {
             path + "?" + &query_string.unwrap()
-        } else {
-            path
-        }
+        } else { path }
     }
 
     pub fn host(&self) -> String {
@@ -301,8 +299,7 @@ impl Response {
             body: Some(Box::new(body)),
         };
         let mime: Mime = "text/html; charset=UTF-8".parse().unwrap();
-        let content_type = ContentType(mime);
-        response.headers.set(content_type);
+        response.headers.set(ContentType(mime));
         response
     }
 
@@ -349,7 +346,6 @@ impl Response {
         self.headers.set(cookie);
     }
 
-    #[doc(hidden)]
     pub fn write(self, request_method: Method, mut res: hyper::server::Response) {
         let status_code = self.status_code;
         *res.status_mut() = get_status_from_code(status_code);

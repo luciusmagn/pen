@@ -50,7 +50,6 @@ extern crate typemap;
 extern crate mime;
 extern crate mime_guess;
 extern crate lazycell;
-extern crate time;
 
 /* public api */
 pub use app::Pencil;
