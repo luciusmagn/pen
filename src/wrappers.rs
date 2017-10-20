@@ -32,30 +32,17 @@ use http_errors::HTTPError;
 use formparser::FormDataParser;
 use lazycell::LazyCell;
 
-
-/// Request type.
 pub struct Request<'r, 'a, 'b: 'a> {
     pub app: &'r Pencil,
-    /// The IP address of the remote connection.
     pub remote_addr: SocketAddr,
-    /// The request method.
     pub method: Method,
-    /// The headers of the incoming request.
     pub headers: Headers,
-    /// The requested url.
     pub url: Url,
-    /// The URL rule that matched the request.  This is
-    /// going to be `None` if nothing matched.
     pub url_rule: Option<Rule>,
-    /// A dict of view arguments that matched the request.
     pub view_args: ViewArgs,
-    /// If matching the URL requests a redirect, this will be the redirect.
     pub routing_redirect: Option<(String, u16)>,
-    /// If matching the URL failed, this will be the routing error.
     pub routing_error: Option<HTTPError>,
-    /// Storage for data of extensions.
     pub extensions_data: TypeMap,
-    /// The server host
     pub host: Host,
     body: RefCell<HttpReader<&'a mut BufReader<&'b mut NetworkStream>>>,
     args: LazyCell<MultiDict<String>>,
@@ -64,29 +51,22 @@ pub struct Request<'r, 'a, 'b: 'a> {
 }
 
 impl<'r, 'a, 'b: 'a> Request<'r, 'a, 'b> {
-    /// Create a `Request`.
     pub fn new(app: &'r Pencil, http_request: HttpRequest<'a, 'b>) -> Result<Request<'r, 'a, 'b>, String> {
         let (remote_addr, method, headers, uri, _, body) = http_request.deconstruct();
         let host = match headers.get::<hyper::header::Host>() {
             Some(host) => host.clone(),
-            None => {
-                return Err("No host specified in your request".into());
-            }
+            None => return Err("No host specified in your request".into()),
         };
         let url = match uri {
             AbsolutePath(ref path) => {
                 let url_string = format!("http://{}{}", get_host_value(&host), path);
                 match Url::parse(&url_string) {
                     Ok(url) => url,
-                    Err(e) => return Err(format!("Couldn't parse requested URL: {}", e))
+                    Err(e) => return Err(format!("Couldn't parse requested URL: {}", e)),
                 }
             },
-            AbsoluteUri(ref url) => {
-                url.clone()
-            },
-            Authority(_) | Star => {
-                return Err("Unsupported request URI".into());
-            }
+            AbsoluteUri(ref url) => url.clone(),
+            Authority(_) | Star => return Err("Unsupported request URI".into()),
         };
         Ok(Request {
             app: app,
@@ -107,12 +87,10 @@ impl<'r, 'a, 'b: 'a> Request<'r, 'a, 'b> {
         })
     }
 
-    /// Get the url adapter for this request.
     pub fn url_adapter(&self) -> MapAdapter {
         self.app.url_map.bind(self.host(), self.path(), self.query_string(), self.method())
     }
 
-    /// Match the request, set the `url_rule` and `view_args` field.
     pub fn match_request(&mut self) {
         let url_adapter = self.app.url_map.bind(self.host(), self.path(), self.query_string(), self.method());
         match url_adapter.matched() {
@@ -129,7 +107,6 @@ impl<'r, 'a, 'b: 'a> Request<'r, 'a, 'b> {
         }
     }
 
-    /// The endpoint that matched the request.
     pub fn endpoint(&self) -> Option<String> {
         match self.url_rule {
             Some(ref rule) => Some(rule.endpoint.clone()),
@@ -137,7 +114,6 @@ impl<'r, 'a, 'b: 'a> Request<'r, 'a, 'b> {
         }
     }
 
-    /// The current module name.
     pub fn module_name(&self) -> Option<String> {
         if let Some(endpoint) = self.endpoint() {
             if endpoint.contains('.') {
@@ -148,7 +124,6 @@ impl<'r, 'a, 'b: 'a> Request<'r, 'a, 'b> {
         None
     }
 
-    /// The parsed URL parameters.
     pub fn args(&self) -> &MultiDict<String> {
         if !self.args.filled() {
             let mut args = MultiDict::new();
@@ -163,53 +138,42 @@ impl<'r, 'a, 'b: 'a> Request<'r, 'a, 'b> {
         self.args.borrow().expect("This is checked to be always filled")
     }
 
-    /// Get content type.
     fn content_type(&self) -> Option<ContentType> {
         let content_type: Option<&ContentType> = self.headers.get();
         content_type.cloned()
     }
 
-    /// This method is used internally to retrieve submitted data.
     fn load_form_data(&self) {
-        if self.form.filled() {
-            return
-        }
+        if self.form.filled() { return; }
         let (form, files) = match self.content_type() {
             Some(ContentType(mimetype)) => {
                 let parser = FormDataParser::new();
                 parser.parse(&mut *self.body.borrow_mut(), &self.headers, &mimetype)
             },
-            None => {
-                (MultiDict::new(), MultiDict::new())
-            }
+            None => (MultiDict::new(), MultiDict::new()),
         };
         self.form.fill(form).expect("This was checked to be empty!");
         self.files.fill(files).expect("This was checked to be empty!");
     }
 
-    /// The form parameters.
     pub fn form(&self) -> &MultiDict<String> {
         self.load_form_data();
         self.form.borrow().expect("This is always checked to be filled.")
     }
 
-    /// All uploaded files.
     pub fn files(&self) -> &MultiDict<FilePart> {
         self.load_form_data();
         self.files.borrow().expect("This is always checked to be filled.")
     }
 
-    /// The headers.
     pub fn headers(&self) -> &Headers {
         &self.headers
     }
 
-    /// Requested path.
     pub fn path(&self) -> String {
         self.url.path().to_owned()
     }
 
-    /// Requested path including the query string.
     pub fn full_path(&self) -> String {
         let path = self.path();
         let query_string = self.query_string();
@@ -220,54 +184,36 @@ impl<'r, 'a, 'b: 'a> Request<'r, 'a, 'b> {
         }
     }
 
-    /// The host including the port if available.
     pub fn host(&self) -> String {
         get_host_value(&self.host)
     }
 
-    /// The query string.
     pub fn query_string(&self) -> Option<String> {
         self.url.query().map(|q| q.to_owned())
     }
 
-    /// The retrieved cookies.
     pub fn cookies(&self) -> Option<&Cookie> {
         self.headers.get()
     }
 
-    /// The request method.
     pub fn method(&self) -> Method {
         self.method.clone()
     }
 
-    /// The remote address of the client.
     pub fn remote_addr(&self) -> SocketAddr {
         self.remote_addr
     }
 
-    /// URL scheme (http or https)
-    pub fn scheme(&self) -> String {
-        String::from("http")
-    }
-
-    /// Just the host with scheme.
     pub fn host_url(&self) -> String {
-        self.scheme() + "://" + &self.host() + "/"
+        "http://".to_owned() + &self.host() + "/"
     }
 
-    /// The current url.
     pub fn url(&self) -> String {
         self.host_url() + self.full_path().trim_left_matches('/')
     }
 
-    /// The current url without the query string.
     pub fn base_url(&self) -> String {
         self.host_url() + self.path().trim_left_matches('/')
-    }
-
-    /// Whether the request is secure (https).
-    pub fn is_secure(&self) -> bool {
-        self.scheme() == "https"
     }
 }
 
@@ -283,12 +229,9 @@ impl<'r, 'a, 'b: 'a> Read for Request<'r, 'a, 'b> {
     }
 }
 
-
-/// The response body.
 pub struct ResponseBody<'a>(Box<Write + 'a>);
 
 impl<'a> ResponseBody<'a> {
-    /// Create a new ResponseBody.
     pub fn new<W: Write + 'a>(writer: W) -> ResponseBody<'a> {
         ResponseBody(Box::new(writer))
     }
@@ -304,8 +247,6 @@ impl<'a> Write for ResponseBody<'a> {
     }
 }
 
-
-/// A trait which writes the body of one response.
 pub trait BodyWrite: Send {
     fn write_body(&mut self, body: &mut ResponseBody) -> io::Result<()>;
 }
@@ -346,29 +287,13 @@ impl BodyWrite for Take<File> {
     }
 }
 
-
-
-/// Response type.  It is just one container with a couple of parameters
-/// (headers, body, status code etc).
 pub struct Response {
-    /// The HTTP Status code number
     pub status_code: u16,
     pub headers: Headers,
     pub body: Option<Box<BodyWrite>>,
 }
 
 impl Response {
-    /// Create a `Response`.  By default, the status code is 200
-    /// and content type is "text/html; charset=UTF-8".
-    /// Remember to set content length if necessary.
-    /// Mostly you should just get a response that is converted
-    /// from other types, which set the content length automatically.
-    /// For example:
-    ///
-    /// ```rust,ignore
-    /// // Content length is set automatically
-    /// let response = Response::from("Hello");
-    /// ```
     pub fn new<T: 'static + BodyWrite>(body: T) -> Response {
         let mut response = Response {
             status_code: 200,
@@ -381,7 +306,6 @@ impl Response {
         response
     }
 
-    /// Create an empty response without body.
     pub fn new_empty() -> Response {
         Response {
             status_code: 200,
@@ -390,7 +314,6 @@ impl Response {
         }
     }
 
-    /// Get status name.
     pub fn status_name(&self) -> &str {
         match get_name_by_http_code(self.status_code) {
             Some(name) => name,
@@ -398,14 +321,10 @@ impl Response {
         }
     }
 
-    /// Returns the response content type if available.
     pub fn content_type(&self) -> Option<&ContentType> {
         self.headers.get()
     }
 
-    /// Set response content type.  If the mimetype passed is a
-    /// mimetype starting with `text/` or something that needs a charset,
-    /// the charset(UTF-8) parameter is appended to it.
     pub fn set_content_type(&mut self, mimetype: &str) {
         let mimetype = get_content_type(mimetype, "UTF-8");
         let mime: Mime = (&mimetype).parse().unwrap();
@@ -413,7 +332,6 @@ impl Response {
         self.headers.set(content_type);
     }
 
-    /// Returns the response content length if available.
     pub fn content_length(&self) -> Option<usize> {
         let content_length: Option<&ContentLength> = self.headers.get();
         match content_length {
@@ -422,28 +340,20 @@ impl Response {
         }
     }
 
-    /// Set content length.
     pub fn set_content_length(&mut self, value: usize) {
         let content_length = ContentLength(value as u64);
         self.headers.set(content_length);
     }
 
-    /// Sets cookie.
     pub fn set_cookie(&mut self, cookie: hyper::header::SetCookie) {
         self.headers.set(cookie);
     }
 
-    /// Write the response out.  Mostly you shouldn't use this directly.
     #[doc(hidden)]
     pub fn write(self, request_method: Method, mut res: hyper::server::Response) {
-        // write status.
         let status_code = self.status_code;
         *res.status_mut() = get_status_from_code(status_code);
-
-        // write headers.
         *res.headers_mut() = self.headers;
-
-        // write data.
         if request_method == Method::Head ||
            (100 <= status_code && status_code < 200) || status_code == 204 || status_code == 304 {
             res.headers_mut().set(ContentLength(0));
@@ -471,8 +381,6 @@ impl fmt::Debug for Response {
 }
 
 impl convert::From<Vec<u8>> for Response {
-    /// Convert to response body.  The content length is set
-    /// automatically.
     fn from(bytes: Vec<u8>) -> Response {
         let content_length = bytes.len();
         let mut response = Response::new(bytes);
@@ -482,37 +390,28 @@ impl convert::From<Vec<u8>> for Response {
 }
 
 impl<'a> convert::From<&'a [u8]> for Response {
-    /// Convert to response body.  The content length is set
-    /// automatically.
     fn from(bytes: &'a [u8]) -> Response {
         bytes.to_vec().into()
     }
 }
 
 impl<'a> convert::From<&'a str> for Response {
-    /// Convert to response body.  The content length is set
-    /// automatically.
     fn from(s: &'a str) -> Response {
         s.to_owned().into()
     }
 }
 
 impl convert::From<String> for Response {
-    /// Convert a new string to response body.  The content length is set
-    /// automatically.
     fn from(s: String) -> Response {
         s.into_bytes().into()
     }
 }
 
 impl convert::From<File> for Response {
-    /// Convert to response body.  The content length is set
-    /// automatically if file size is available from metadata.
+
     fn from(f: File) -> Response {
         let content_length = match f.metadata() {
-            Ok(metadata) => {
-                Some(metadata.len())
-            },
+            Ok(metadata) => Some(metadata.len()),
             Err(_) => None
         };
         let mut response = Response::new(f);

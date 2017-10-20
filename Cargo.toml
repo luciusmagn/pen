@@ -12,8 +12,8 @@ description = "A micro web framework for Rust. (A fork of a Pencil fork)"
 categories = ["web-programming::http-server"]
 
 [dependencies]
-regex = "0.2.2"
-url = "1.5.1"
+regex = "0.2"
+url = "1.2.1"
 typemap = "0.3.3"
 mime = "0.2.2"
 mime_guess = "1.8.0"

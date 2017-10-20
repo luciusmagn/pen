@@ -1,5 +1,3 @@
-//! This module exports the http method.
-
 pub use hyper::method::Method;
 pub use hyper::method::Method::{
     Options,

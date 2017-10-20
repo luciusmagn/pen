@@ -1,17 +1,10 @@
-//! This module implements a bunch of utilities that help Pencil
-//! to deal with HTTP data.
-
 use hyper::header::Host;
 use hyper::status::StatusCode;
 
-
-/// Get HTTP status name by status code.
 pub fn get_name_by_http_code(code: u16) -> Option<&'static str> {
     get_status_from_code(code).canonical_reason()
 }
 
-
-/// Return the full content type with charset for a mimetype.
 pub fn get_content_type(mimetype: &str, charset: &str) -> String {
     if (mimetype.starts_with("text/") || (mimetype == "application/xml") ||
        (mimetype.starts_with("application/") && mimetype.ends_with("+xml"))) &&
@@ -22,8 +15,6 @@ pub fn get_content_type(mimetype: &str, charset: &str) -> String {
     }
 }
 
-
-/// Return the http value of host.
 pub fn get_host_value(host: &Host) -> String {
     match host.port {
         None | Some(80) | Some(443) => host.hostname.clone(),
@@ -31,8 +22,6 @@ pub fn get_host_value(host: &Host) -> String {
     }
 }
 
-
-/// Return the status code used by hyper response.
 pub fn get_status_from_code(code: u16) -> StatusCode {
     match code {
         100 => StatusCode::Continue,
@@ -95,11 +84,4 @@ pub fn get_status_from_code(code: u16) -> StatusCode {
         511 => StatusCode::NetworkAuthenticationRequired,
         _ => StatusCode::Unregistered(code),
     }
-}
-
-
-#[test]
-fn test_get_name_by_http_code() {
-    let status_name = get_name_by_http_code(200).unwrap();
-    assert!(status_name == "OK");
 }

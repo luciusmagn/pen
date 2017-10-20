@@ -90,16 +90,16 @@ pub use hyper::header::{Cookie, SetCookie, Headers, ContentLength, ContentType};
 
 
 #[macro_use]
-mod utils;
-pub mod http_errors;
-pub mod datastructures;
-pub mod wrappers;
+mod utils; //checked
+pub mod http_errors; //checked
+pub mod datastructures; //checked
+pub mod wrappers; //checked
 pub mod routing;
 pub mod helpers;
-pub mod method;
+pub mod method; //checked
 mod app;
-mod types;
-mod serving;
-mod httputils;
-mod formparser;
-mod module;
+mod types; //checked
+mod serving; //checked
+mod httputils; //checked
+mod formparser; //checked
+mod module; //checked

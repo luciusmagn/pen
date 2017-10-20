@@ -1,5 +1,3 @@
-//! This module implements a number of http errors.
-
 use std::error::Error;
 use std::fmt;
 
@@ -37,31 +35,6 @@ pub use self::HTTPError::{
     ServiceUnavailable,
 };
 
-
-/// The HTTP Error type you can return from within your views to trigger a
-/// non-200 response.  Here is one usage example:
-///
-/// ```rust,no_run
-/// use sharp_pencil::{Request, PencilResult, PenHTTPError};
-/// use sharp_pencil::http_errors::NotFound;
-///
-///
-/// fn view(_: &mut Request) -> PencilResult {
-///     return Err(PenHTTPError(NotFound))
-/// }
-/// ```
-///
-/// Pencil comes with a shortcut that can be used to return non-200 HTTP error easily:
-///
-/// ```rust,no_run
-/// use sharp_pencil::{Request, PencilResult};
-/// use sharp_pencil::abort;
-///
-///
-/// fn view(_: &mut Request) -> PencilResult {
-///     return abort(404)
-/// }
-/// ```
 #[derive(Clone, Debug)]
 pub enum HTTPError {
     BadRequest,
@@ -92,7 +65,6 @@ pub enum HTTPError {
 }
 
 impl HTTPError {
-    /// Create a new `HTTPError`.
     pub fn new(code: u16) -> HTTPError {
         match code {
             400 => BadRequest,
@@ -116,7 +88,6 @@ impl HTTPError {
             428 => PreconditionRequired,
             429 => TooManyRequests,
             431 => RequestHeaderFieldsTooLarge,
-            // 500 => InternalServerError
             501 => NotImplemented,
             502 => BadGateway,
             503 => ServiceUnavailable,
@@ -124,7 +95,6 @@ impl HTTPError {
         }
     }
 
-    /// The status code.
     pub fn code(&self) -> u16 {
         match *self {
             BadRequest => 400,
@@ -155,7 +125,6 @@ impl HTTPError {
         }
     }
 
-    /// The status name.
     pub fn name(&self) -> &str {
         match get_name_by_http_code(self.code()) {
             Some(name) => name,
@@ -163,7 +132,6 @@ impl HTTPError {
         }
     }
 
-    /// Get description.
     fn get_description(&self) -> &str {
         match *self {
             BadRequest => "The browser (or proxy) sent a request that this server \
@@ -218,7 +186,6 @@ impl HTTPError {
         }
     }
 
-    /// Get the HTML body.
     pub fn get_body(&self) -> String {
         format!(
 "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 3.2 Final//EN\">
@@ -228,7 +195,6 @@ impl HTTPError {
 ", self.code().to_string(), self.name(), self.name(), self.get_description())
     }
 
-    /// Get a response object.
     pub fn to_response(&self) -> Response {
         let mut response = Response::from(self.get_body());
         response.status_code = self.code();

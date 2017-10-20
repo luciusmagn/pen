@@ -1,5 +1,3 @@
-//! This module implements various helpers.
-
 use std::error::Error;
 use std::fs::File;
 use std::path::{Path, PathBuf};
@@ -24,39 +22,10 @@ use http_errors::{
         NotFound,
 };
 
-
-/// Path bound trait.
 pub trait PathBound {
-    /// Opens a resource from the root path folder.  Consider the following
-    /// folder structure:
-    ///
-    /// ```ignore
-    /// /myapp.rs
-    /// /user.sql
-    /// /templates
-    ///     /index.html
-    /// ```
-    ///
-    /// If you want to open the `user.sql` file you should do the following:
-    ///
-    /// ```rust,no_run
-    /// use std::io::Read;
-    ///
-    /// use sharp_pencil::PathBound;
-    ///
-    ///
-    /// fn main() {
-    ///     let app = sharp_pencil::Pencil::new("/web/demo");
-    ///     let mut file = app.open_resource("user.sql");
-    ///     let mut content = String::from("");
-    ///     file.read_to_string(&mut content).unwrap();
-    /// }
-    /// ```
     fn open_resource(&self, resource: &str) -> File;
 }
 
-
-/// Safely join directory and filename, otherwise this returns None.
 pub fn safe_join(directory: &str, filename: &str) -> Option<PathBuf> {
     let directory = Path::new(directory);
     let filename = Path::new(filename);
@@ -72,14 +41,10 @@ pub fn safe_join(directory: &str, filename: &str) -> Option<PathBuf> {
     }
 }
 
-
-/// One helper function that can be used to return HTTP Error inside a view function.
 pub fn abort(code: u16) -> PencilResult {
     Err(PenHTTPError(HTTPError::new(code)))
 }
 
-
-/// Returns a response that redirects the client to the target location.
 pub fn redirect(location: &str, code: u16) -> PencilResult {
     let mut response = Response::from(format!(
 "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 3.2 Final//EN\">
@@ -94,17 +59,11 @@ pub fn redirect(location: &str, code: u16) -> PencilResult {
     Ok(response)
 }
 
-
-/// Replace special characters "&", "<", ">" and (") to HTML-safe characters.
 pub fn escape(s: &str) -> String {
     s.replace("&", "&amp;").replace("<", "&lt;")
      .replace(">", "&gt;").replace("\"", "&quot;")
 }
 
-/// Sends the contents of a file to the client.  Please never pass filenames to this
-/// function from user sources without checking them first.  Set `as_attachment` to
-/// `true` if you want to send this file with a `Content-Disposition: attachment`
-/// header.  This will return `NotFound` if filepath is not one file.
 pub fn send_file(filepath: &str, mimetype: Mime, as_attachment: bool) -> PencilResult {
     let filepath = Path::new(filepath);
     if !filepath.is_file() {
@@ -126,26 +85,17 @@ pub fn send_file(filepath: &str, mimetype: Mime, as_attachment: bool) -> PencilR
                         let content_disposition = format!("attachment; filename={}", filename);
                         response.headers.set_raw("Content-Disposition", vec![content_disposition.as_bytes().to_vec()]);
                     },
-                    None => {
-                        return Err(UserError::new("filename unavailable, required for sending as attachment.").into());
-                    }
+                    None =>
+                        return Err(UserError::new("filename unavailable, required for sending as attachment.").into()),
                 }
             },
-            None => {
-                return Err(UserError::new("filename unavailable, required for sending as attachment.").into());
-            }
+            None =>
+                return Err(UserError::new("filename unavailable, required for sending as attachment.").into()),
         }
     }
     Ok(response)
 }
 
-
-/// Sends the contents of a file to the client, supporting HTTP Range requests, so it allows only partial files
-/// to be requested and sent. This doesn't support multiranges at the moment.
-/// Please never pass filenames to this
-/// function from user sources without checking them first.  Set `as_attachment` to
-/// `true` if you want to send this file with a `Content-Disposition: attachment`
-/// header.  This will return `NotFound` if filepath is not one file.
 pub fn send_file_range(filepath: &str, mimetype: Mime, as_attachment: bool, range: Option<&Range>)
     -> PencilResult
 {
@@ -155,9 +105,8 @@ pub fn send_file_range(filepath: &str, mimetype: Mime, as_attachment: bool, rang
     }
     let mut file = match File::open(&filepath) {
         Ok(file) => file,
-        Err(e) => {
-            return Err(UserError::new(format!("couldn't open {}: {}", filepath.display(), e.description())).into());
-        }
+        Err(e) =>
+            return Err(UserError::new(format!("couldn't open {}: {}", filepath.display(), e.description())).into()),
     };
 
     let len = file.metadata().map_err(|_| PenHTTPError(HTTPError::InternalServerError))?.len();
@@ -217,47 +166,31 @@ pub fn send_file_range(filepath: &str, mimetype: Mime, as_attachment: bool, rang
                         let content_disposition = format!("attachment; filename={}", filename);
                         response.headers.set_raw("Content-Disposition", vec![content_disposition.as_bytes().to_vec()]);
                     },
-                    None => {
-                        return Err(UserError::new("filename unavailable, required for sending as attachment.").into());
-                    }
+                    None =>
+                        return Err(UserError::new("filename unavailable, required for sending as attachment.").into()),
                 }
             },
-            None => {
-                return Err(UserError::new("filename unavailable, required for sending as attachment.").into());
-            }
+            None =>
+                return Err(UserError::new("filename unavailable, required for sending as attachment.").into()),
         }
     }
     Ok(response)
 }
 
-
-/// Send a file from a given directory with `send_file`.  This is a secure way to
-/// quickly expose static files from an folder.  This will guess the mimetype
-/// for you.
 pub fn send_from_directory(directory: &str, filename: &str,
                            as_attachment: bool) -> PencilResult {
     match safe_join(directory, filename) {
         Some(filepath) => {
             let mimetype = guess_mime_type(filepath.as_path());
             match filepath.as_path().to_str() {
-                Some(filepath) => {
-                    send_file(filepath, mimetype, as_attachment)
-                },
-                None => {
-                    Err(PenHTTPError(NotFound))
-                }
+                Some(filepath) => send_file(filepath, mimetype, as_attachment),
+                None => Err(PenHTTPError(NotFound)),
             }
         },
-        None => {
-            Err(PenHTTPError(NotFound))
-        }
+        None =>  Err(PenHTTPError(NotFound)),
     }
 }
 
-/// Send a file from a given directory with `send_file`, supporting HTTP Range requests, so it allows only partial files
-/// to be requested and sent. This doesn't support multiranges at the moment. This is a secure way to
-/// quickly expose static files from an folder.  This will guess the mimetype
-/// for you.
 pub fn send_from_directory_range(directory: &str, filename: &str,
                            as_attachment: bool, range: Option<&Range>)
     -> PencilResult

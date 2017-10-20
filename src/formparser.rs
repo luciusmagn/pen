@@ -3,13 +3,11 @@
 
 use std::io::Read;
 
-use hyper::header::Headers;
-use hyper::mime::{Mime, TopLevel, SubLevel};
-use formdata::{read_formdata, FilePart};
 use url::form_urlencoded;
-
+use hyper::header::Headers;
 use datastructures::MultiDict;
-
+use formdata::{read_formdata, FilePart};
+use hyper::mime::{Mime, TopLevel, SubLevel};
 
 /// This type implements parsing of form data for Pencil. It can parse
 /// multipart and url encoded form data.
@@ -21,7 +19,6 @@ impl FormDataParser {
     }
 
     pub fn parse<B: Read>(&self, body: &mut B, headers: &Headers, mimetype: &Mime) -> (MultiDict<String>, MultiDict<FilePart>) {
-        let default = (MultiDict::new(), MultiDict::new());
         match *mimetype {
             Mime(TopLevel::Application, SubLevel::WwwFormUrlEncoded, _) => {
                 let mut body_vec: Vec<u8> = Vec::new();
@@ -33,9 +30,7 @@ impl FormDataParser {
                         }
                         (form, MultiDict::new())
                     },
-                    Err(_) => {
-                        default
-                    }
+                    Err(_) => (MultiDict::new(), MultiDict::new())
                 }
             },
             Mime(TopLevel::Multipart, SubLevel::FormData, _) => {
@@ -51,14 +46,10 @@ impl FormDataParser {
                         }
                         (form, files)
                     },
-                    Err(_) => {
-                        default
-                    }
+                    Err(_) => (MultiDict::new(), MultiDict::new())
                 }
             },
-            _ => {
-                default
-            }
+            _ => (MultiDict::new(), MultiDict::new())
         }
     }
 }

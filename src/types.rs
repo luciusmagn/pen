@@ -1,5 +1,3 @@
-//! This module implements a number of types.
-
 use std::collections::HashMap;
 use std::error;
 use std::convert;
@@ -14,8 +12,6 @@ pub use self::PencilError::{
     PenUserError
 };
 
-
-/// The Pencil User Error type.
 #[derive(Clone, Debug)]
 pub struct UserError {
     pub desc: String,
@@ -41,8 +37,6 @@ impl error::Error for UserError {
     }
 }
 
-
-/// The Pencil Error type.
 #[derive(Clone, Debug)]
 pub enum PencilError {
     PenHTTPError(HTTPError),
@@ -71,7 +65,6 @@ impl fmt::Display for PencilError {
 }
 
 impl error::Error for PencilError {
-
     fn description(&self) -> &str {
         match *self {
             PenHTTPError(ref err) => err.description(),
@@ -87,29 +80,15 @@ impl error::Error for PencilError {
     }
 }
 
-
-/// The Pencil Result type.
 pub type PencilResult = Result<Response, PencilError>;
 
-
-/// View arguments type.
 pub type ViewArgs = HashMap<String, String>;
-/// View function type.
 pub type ViewFunc = fn(&mut Request) -> PencilResult;
 
-
-/// HTTP Error handler type.
 pub type HTTPErrorHandler = Fn(HTTPError) -> PencilResult + Send + Sync;
-/// User Error handler type.
 pub type UserErrorHandler = Fn(UserError) -> PencilResult + Send + Sync;
 
-/// Before request func type.
 pub type BeforeRequestFunc = Fn(&mut Request) -> Option<PencilResult> + Send + Sync;
-
-
-/// After request func type.
 pub type AfterRequestFunc = Fn(&Request, &mut Response) + Send + Sync;
 
-
-/// Teardown request func type.
 pub type TeardownRequestFunc = Fn(Option<&PencilError>) + Send + Sync;

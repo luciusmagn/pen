@@ -37,8 +37,8 @@ fn parse_rule(rule: &str) -> Vec<(Option<&str>, &str)> {
                 }
                 let variable = caps.name("variable").unwrap();
                 let converter = match caps.name("converter") {
-                    Some(converter) => { converter.as_str() },
-                    None => { "default" },
+                    Some(converter) => converter.as_str(),
+                    None => "default",
                 };
                 if used_names.contains(variable.as_str()) {
                     panic!("variable name {} used twice.", variable.as_str());
@@ -49,9 +49,7 @@ fn parse_rule(rule: &str) -> Vec<(Option<&str>, &str)> {
                 let (_, tail) = remaining.split_at(end);
                 remaining = tail;
             },
-            None => {
-                break;
-            }
+            None => break,
         }
     }
     if !remaining.is_empty() {
@@ -188,17 +186,12 @@ impl Rule {
         if all_methods.contains(&Method::Get) {
             all_methods.insert(Method::Head);
         }
-        let provide_automatic_options = if all_methods.contains(&Method::Options) {
-            false
-        } else {
-            all_methods.insert(Method::Options);
-            true
-        };
         Rule {
             matcher: matcher,
             endpoint: endpoint.to_string(),
+            provide_automatic_options: if all_methods.contains(&Method::Options) { false }
+                                       else { all_methods.insert(Method::Options); true },
             methods: all_methods,
-            provide_automatic_options: provide_automatic_options,
         }
     }
 
@@ -303,7 +296,6 @@ impl<'m> MapAdapter<'m> {
                         Ok(view_args) => {
                             rule_view_args = view_args;
                         },
-                        // RequestSlashError, redirect here
                         Err(_) => {
                             let redirect_url = self.make_redirect_url();
                             return MapAdapterMatched::MatchedRedirect((redirect_url, 301));
@@ -339,30 +331,11 @@ impl<'m> MapAdapter<'m> {
                     }
                     continue;
                 },
-                None => { continue; },
+                None => continue,
             }
         }
         let mut allowed_methods = Vec::new();
         allowed_methods.extend(have_match_for.into_iter());
         allowed_methods
-    }
-}
-
-
-#[test]
-fn test_basic_routing() {
-    let mut map = Map::new();
-    map.add(Rule::new("/".into(), &[Method::Get], "index"));
-    map.add(Rule::new("/foo".into(), &[Method::Get], "foo"));
-    map.add(Rule::new("/bar/".into(), &[Method::Get], "bar"));
-    let adapter = map.bind(String::from("localhost"), String::from("/bar/"), None, Method::Get);
-    match adapter.matched() {
-        MapAdapterMatched::MatchedRule((rule, view_args)) => {
-            assert!(rule.methods.contains(&Method::Get));
-            assert!(!rule.methods.contains(&Method::Post));
-            assert!(rule.endpoint == String::from("bar"));
-            assert!(view_args.len() == 0);
-        },
-        _ => { panic!("Basic routing failed!"); }
     }
 }
