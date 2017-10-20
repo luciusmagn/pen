@@ -34,7 +34,6 @@ use helpers::{PathBound, send_from_directory_range, redirect};
 use serving::run_server;
 use routing::{Map, Rule, Matcher};
 use http_errors::{HTTPError, NotFound, InternalServerError};
-use module::Module;
 use typemap::ShareMap;
 
 const DEFAULT_THREADS: usize = 15;
@@ -47,7 +46,6 @@ pub struct Pencil {
     pub template_folder: String,
     pub extensions: ShareMap,
     pub url_map: Map,
-    pub modules: HashMap<String, Module>,
     view_functions: HashMap<String, ViewFunc>,
     before_request_funcs: Vec<Box<BeforeRequestFunc>>,
     after_request_funcs: Vec<Box<AfterRequestFunc>>,
@@ -66,7 +64,6 @@ impl Pencil {
             template_folder: String::from("templates"),
             extensions: ShareMap::custom(),
             url_map: Map::new(),
-            modules: HashMap::new(),
             view_functions: HashMap::new(),
             before_request_funcs: vec![],
             after_request_funcs: vec![],
@@ -109,10 +106,6 @@ impl Pencil {
         self.view_functions.insert(endpoint.to_string(), view_func);
     }
 
-    pub fn register_module(&mut self, module: Module) {
-        module.register(self);
-    }
-
     pub fn enable_static_file_handling(&mut self) {
         let rule = self.static_url_path.clone() + "/<filename:path>";
         self.route(&rule as &str, &[Method::Get], "static", send_app_static_file);
@@ -147,13 +140,6 @@ impl Pencil {
     }
 
     fn preprocess_request(&self, request: &mut Request) -> Option<PencilResult> {
-        if let Some(module) = self.get_module(request.module_name()) {
-            for func in &module.before_request_funcs {
-                if let Some(result) = func(request) {
-                    return Some(result);
-                }
-            }
-        }
         for func in &self.before_request_funcs {
             if let Some(result) = func(request) {
                 return Some(result);
@@ -192,58 +178,28 @@ impl Pencil {
         } else { None }
     }
 
-    fn get_module(&self, module_name: Option<String>) -> Option<&Module> {
-        if let Some(name) = module_name {
-            self.modules.get(&name)
-        } else { None }
-    }
-
     fn process_response(&self, request: &Request, response: &mut Response) {
-        if let Some(module) = self.get_module(request.module_name()) {
-            for func in module.after_request_funcs.iter().rev() {
-                func(request, response);
-            }
-        }
-        for func in self.after_request_funcs.iter().rev() {
-            func(request, response);
-        }
+        for func in self.after_request_funcs.iter().rev() { func(request, response); }
     }
 
-    fn do_teardown_request(&self, request: &Request, e: Option<&PencilError>) {
-        if let Some(module) = self.get_module(request.module_name()) {
-            for func in module.teardown_request_funcs.iter().rev() {
-                func(e);
-            }
-        }
-        for func in self.teardown_request_funcs.iter().rev() {
-            func(e);
-        }
+    fn do_teardown_request(&self, e: Option<&PencilError>) {
+        for func in self.teardown_request_funcs.iter().rev() { func(e); }
     }
 
-    fn handle_all_error(&self, request: &Request, e: PencilError) -> PencilResult {
+    fn handle_all_error(&self, e: PencilError) -> PencilResult {
         match e {
-            PenHTTPError(e) => self.handle_http_error(request, e),
-            PenUserError(e) => self.handle_user_error(request, e),
+            PenHTTPError(e) => self.handle_http_error(e),
+            PenUserError(e) => self.handle_user_error(e),
         }
     }
 
-    fn handle_user_error(&self, request: &Request, e: UserError) -> PencilResult {
-        if let Some(module) = self.get_module(request.module_name()) {
-            if let Some(handler) = module.user_error_handlers.get(&e.desc) {
-                return handler(e);
-            }
-        }
+    fn handle_user_error(&self, e: UserError) -> PencilResult {
         if let Some(handler) = self.user_error_handlers.get(&e.desc) {
             handler(e)
         } else { Err(PenUserError(e)) }
     }
 
-    fn handle_http_error(&self, request: &Request, e: HTTPError) -> PencilResult {
-        if let Some(module) = self.get_module(request.module_name()) {
-            if let Some(handler) = module.http_error_handlers.get(&e.code()) {
-                return handler(e);
-            }
-        }
+    fn handle_http_error(&self, e: HTTPError) -> PencilResult {
         if let Some(handler) = self.http_error_handlers.get(&e.code()) {
             handler(e)
         } else { Ok(e.to_response()) }
@@ -251,8 +207,7 @@ impl Pencil {
 
     fn handle_error(&self, request: &Request, e: &PencilError) -> Response {
         self.log_error(request, e);
-        let internal_server_error = InternalServerError;
-        if let Ok(response) = self.handle_http_error(request, internal_server_error) {
+        if let Ok(response) = self.handle_http_error(InternalServerError) {
             response
         } else {
             InternalServerError.to_response()
@@ -270,7 +225,7 @@ impl Pencil {
         };
         let rv = match result {
             Ok(response) => Ok(response),
-            Err(e) => self.handle_all_error(request, e),
+            Err(e) => self.handle_all_error(e),
         };
         match rv {
             Ok(mut response) => {
@@ -285,12 +240,12 @@ impl Pencil {
         request.match_request();
         match self.full_dispatch_request(request) {
             Ok(response) => {
-                self.do_teardown_request(request, None);
+                self.do_teardown_request(None);
                 response
             },
             Err(e) => {
                 let response = self.handle_error(request, &e);
-                self.do_teardown_request(request, Some(&e));
+                self.do_teardown_request(Some(&e));
                 response
             }
         }

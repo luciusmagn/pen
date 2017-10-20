@@ -404,7 +404,6 @@ impl convert::From<String> for Response {
 }
 
 impl convert::From<File> for Response {
-
     fn from(f: File) -> Response {
         let content_length = match f.metadata() {
             Ok(metadata) => Some(metadata.len()),

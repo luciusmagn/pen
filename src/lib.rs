@@ -1,43 +1,3 @@
-//! Pencil is a microframework for Rust inspired by [Flask](http://flask.pocoo.org/).
-//!
-//! # Installation
-//!
-//! This crate is called `pencil` and you can depend on it via cargo:
-//!
-//! ```ini
-//! [dependencies]
-//! pencil = "*"
-//! ```
-//!
-//! # Quickstart
-//!
-//! A short introduction to Pencil.
-//!
-//! ## A Minimal Application
-//!
-//! A minimal Pencil application looks something like this:
-//!
-//! ```rust,no_run
-//! extern crate sharp_pencil;
-//!
-//! use sharp_pencil::Pencil;
-//! use sharp_pencil::{Request, PencilResult, Response};
-//! use sharp_pencil::method::Get;
-//!
-//!
-//! fn hello(_: &mut Request) -> PencilResult {
-//!     Ok(Response::from("Hello World!"))
-//! }
-//!
-//!
-//! fn main() {
-//!     let mut app = Pencil::new("/web/hello");
-//!     app.route("/", &[Get], "hello", hello);
-//!     app.run("127.0.0.1:5000");
-//! }
-//! ```
-
-#![deny(non_camel_case_types)]
 #![allow(unknown_lints,
          new_without_default_derive,
          type_complexity)]
@@ -83,22 +43,17 @@ pub use helpers::{
     send_file,
     send_from_directory,
 };
-pub use module::Module;
-
 pub use hyper::header::{Cookie, SetCookie, Headers, ContentLength, ContentType};
 
-
-#[macro_use]
-mod utils; //checked
-pub mod http_errors; //checked
-pub mod datastructures; //checked
-pub mod wrappers; //checked
+#[macro_use] mod utils;
+pub mod http_errors;
+pub mod datastructures;
+pub mod wrappers;
 pub mod routing;
 pub mod helpers;
-pub mod method; //checked
+pub mod method;
 mod app;
-mod types; //checked
-mod serving; //checked
-mod httputils; //checked
-mod formparser; //checked
-mod module; //checked
+mod types;
+mod serving;
+mod httputils;
+mod formparser;
