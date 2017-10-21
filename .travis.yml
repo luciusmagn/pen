@@ -1,6 +1,8 @@
-sudo: false
 language: rust
 rust:
   - stable
-  - unstable
+  - beta
   - nightly
+matrix:
+  allow_failures:
+     - rust: nightly
