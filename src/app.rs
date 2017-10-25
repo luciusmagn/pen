@@ -13,12 +13,12 @@ use hyper::server::Request as HTTPRequest;
 use hyper::server::Response as HTTPResponse;
 
 use types::{
-    PencilError,
+    PenError,
         PenHTTPError,
         PenUserError,
 
     UserError,
-    PencilResult,
+    PenResult,
     ViewFunc,
     HTTPErrorHandler,
     UserErrorHandler,
@@ -38,7 +38,7 @@ use typemap::ShareMap;
 
 const DEFAULT_THREADS: usize = 15;
 
-pub struct Pencil {
+pub struct Pen {
     pub root_path: String,
     pub name: String,
     pub static_folder: String,
@@ -54,9 +54,9 @@ pub struct Pencil {
     user_error_handlers: HashMap<String, Box<UserErrorHandler>>,
 }
 
-impl Pencil {
-    pub fn new(root_path: &str) -> Pencil {
-        Pencil {
+impl Pen {
+    pub fn new(root_path: &str) -> Pen {
+        Pen {
             root_path: root_path.to_string(),
             name: root_path.to_string(),
             static_folder: String::from("static"),
@@ -111,7 +111,7 @@ impl Pencil {
         self.route(&rule as &str, &[Method::Get], "static", send_app_static_file);
     }
 
-    pub fn before_request<F: Fn(&mut Request) -> Option<PencilResult> + Send + Sync + 'static>(&mut self, f: F) {
+    pub fn before_request<F: Fn(&mut Request) -> Option<PenResult> + Send + Sync + 'static>(&mut self, f: F) {
         self.before_request_funcs.push(Box::new(f));
     }
 
@@ -119,27 +119,27 @@ impl Pencil {
         self.after_request_funcs.push(Box::new(f));
     }
 
-    pub fn teardown_request<F: Fn(Option<&PencilError>) + Send + Sync + 'static>(&mut self, f: F) {
+    pub fn teardown_request<F: Fn(Option<&PenError>) + Send + Sync + 'static>(&mut self, f: F) {
         self.teardown_request_funcs.push(Box::new(f));
     }
 
-    pub fn register_http_error_handler<F: Fn(HTTPError) -> PencilResult + Send + Sync + 'static>(&mut self, status_code: u16, f: F) {
+    pub fn register_http_error_handler<F: Fn(HTTPError) -> PenResult + Send + Sync + 'static>(&mut self, status_code: u16, f: F) {
         self.http_error_handlers.insert(status_code, Box::new(f));
     }
 
-    pub fn register_user_error_handler<F: Fn(UserError) -> PencilResult + Send + Sync + 'static>(&mut self, error_desc: &str, f: F) {
+    pub fn register_user_error_handler<F: Fn(UserError) -> PenResult + Send + Sync + 'static>(&mut self, error_desc: &str, f: F) {
         self.user_error_handlers.insert(error_desc.to_string(), Box::new(f));
     }
 
-    pub fn httperrorhandler<F: Fn(HTTPError) -> PencilResult + Send + Sync + 'static>(&mut self, status_code: u16, f: F) {
+    pub fn httperrorhandler<F: Fn(HTTPError) -> PenResult + Send + Sync + 'static>(&mut self, status_code: u16, f: F) {
         self.register_http_error_handler(status_code, f);
     }
 
-    pub fn usererrorhandler<F: Fn(UserError) -> PencilResult + Send + Sync + 'static>(&mut self, error_desc: &str, f: F) {
+    pub fn usererrorhandler<F: Fn(UserError) -> PenResult + Send + Sync + 'static>(&mut self, error_desc: &str, f: F) {
         self.register_user_error_handler(error_desc, f);
     }
 
-    fn preprocess_request(&self, request: &mut Request) -> Option<PencilResult> {
+    fn preprocess_request(&self, request: &mut Request) -> Option<PenResult> {
         for func in &self.before_request_funcs {
             if let Some(result) = func(request) {
                 return Some(result);
@@ -148,7 +148,7 @@ impl Pencil {
         None
     }
 
-    fn dispatch_request(&self, request: &mut Request) -> PencilResult {
+    fn dispatch_request(&self, request: &mut Request) -> PenResult {
         if let Some(ref routing_error) = request.routing_error {
             Err(PenHTTPError(routing_error.clone()))
         }
@@ -182,30 +182,30 @@ impl Pencil {
         for func in self.after_request_funcs.iter().rev() { func(request, response); }
     }
 
-    fn do_teardown_request(&self, e: Option<&PencilError>) {
+    fn do_teardown_request(&self, e: Option<&PenError>) {
         for func in self.teardown_request_funcs.iter().rev() { func(e); }
     }
 
-    fn handle_all_error(&self, e: PencilError) -> PencilResult {
+    fn handle_all_error(&self, e: PenError) -> PenResult {
         match e {
             PenHTTPError(e) => self.handle_http_error(e),
             PenUserError(e) => self.handle_user_error(e),
         }
     }
 
-    fn handle_user_error(&self, e: UserError) -> PencilResult {
+    fn handle_user_error(&self, e: UserError) -> PenResult {
         if let Some(handler) = self.user_error_handlers.get(&e.desc) {
             handler(e)
         } else { Err(PenUserError(e)) }
     }
 
-    fn handle_http_error(&self, e: HTTPError) -> PencilResult {
+    fn handle_http_error(&self, e: HTTPError) -> PenResult {
         if let Some(handler) = self.http_error_handlers.get(&e.code()) {
             handler(e)
         } else { Ok(e.to_response()) }
     }
 
-    fn handle_error(&self, request: &Request, e: &PencilError) -> Response {
+    fn handle_error(&self, request: &Request, e: &PenError) -> Response {
         self.log_error(request, e);
         if let Ok(response) = self.handle_http_error(InternalServerError) {
             response
@@ -214,11 +214,11 @@ impl Pencil {
         }
     }
 
-    fn log_error(&self, request: &Request, e: &PencilError) {
+    fn log_error(&self, request: &Request, e: &PenError) {
         eprintln!("Error on {} [{}]: {}", request.path(), request.method(), e.description());
     }
 
-    fn full_dispatch_request(&self, request: &mut Request) -> Result<Response, PencilError> {
+    fn full_dispatch_request(&self, request: &mut Request) -> Result<Response, PenError> {
         let result = match self.preprocess_request(request) {
             Some(result) => result,
             None => self.dispatch_request(request),
@@ -260,7 +260,7 @@ impl Pencil {
     }
 }
 
-impl hyper::server::Handler for Pencil {
+impl hyper::server::Handler for Pen {
     fn handle(&self, req: HTTPRequest, mut res: HTTPResponse) {
         match Request::new(self, req) {
             Ok(mut request) => {
@@ -277,7 +277,7 @@ impl hyper::server::Handler for Pencil {
     }
 }
 
-impl PathBound for Pencil {
+impl PathBound for Pen {
     fn open_resource(&self, resource: &str) -> File {
         let mut pathbuf = PathBuf::from(&self.root_path);
         pathbuf.push(resource);
@@ -285,19 +285,19 @@ impl PathBound for Pencil {
     }
 }
 
-impl fmt::Display for Pencil {
+impl fmt::Display for Pen {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "<Pencil application {}>", self.name)
+        write!(f, "<Pen application {}>", self.name)
     }
 }
 
-impl fmt::Debug for Pencil {
+impl fmt::Debug for Pen {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "<Pencil application {}>", self.name)
+        write!(f, "<Pen application {}>", self.name)
     }
 }
 
-fn send_app_static_file(request: &mut Request) -> PencilResult {
+fn send_app_static_file(request: &mut Request) -> PenResult {
     let mut static_path = PathBuf::from(&request.app.root_path);
     static_path.push(&request.app.static_folder);
     send_from_directory_range(static_path.to_str().unwrap(), &request.view_args["filename"], false, request.headers().get())

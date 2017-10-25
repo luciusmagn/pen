@@ -20,7 +20,7 @@ use url::form_urlencoded;
 use formdata::FilePart;
 use typemap::TypeMap;
 
-use app::Pencil;
+use app::Pen;
 use datastructures::MultiDict;
 use httputils::{get_name_by_http_code, get_content_type, get_host_value};
 use httputils::get_status_from_code;
@@ -31,7 +31,7 @@ use formparser::FormDataParser;
 use lazycell::LazyCell;
 
 pub struct Request<'r, 'a, 'b: 'a> {
-    pub app: &'r Pencil,
+    pub app: &'r Pen,
     pub remote_addr: SocketAddr,
     pub method: Method,
     pub headers: Headers,
@@ -49,7 +49,7 @@ pub struct Request<'r, 'a, 'b: 'a> {
 }
 
 impl<'r, 'a, 'b: 'a> Request<'r, 'a, 'b> {
-    pub fn new(app: &'r Pencil, http_request: HttpRequest<'a, 'b>) -> Result<Request<'r, 'a, 'b>, String> {
+    pub fn new(app: &'r Pen, http_request: HttpRequest<'a, 'b>) -> Result<Request<'r, 'a, 'b>, String> {
         let (remote_addr, method, headers, uri, _, body) = http_request.deconstruct();
         let host = match headers.get::<hyper::header::Host>() {
             Some(host) => host.clone(),
@@ -215,7 +215,7 @@ impl<'r, 'a, 'b: 'a> Request<'r, 'a, 'b> {
 
 impl<'r, 'a, 'b: 'a> fmt::Debug for Request<'r, 'a, 'b> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "<Pencil Request '{}' {}>", self.url(), self.method())
+        write!(f, "<Pen Request '{}' {}>", self.url(), self.method())
     }
 }
 
@@ -370,7 +370,7 @@ impl Response {
 
 impl fmt::Debug for Response {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "<Pencil Response [{}]>", self.status_code)
+        write!(f, "<Pen Response [{}]>", self.status_code)
     }
 }
 

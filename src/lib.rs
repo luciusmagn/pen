@@ -12,13 +12,13 @@ extern crate mime_guess;
 extern crate lazycell;
 
 /* public api */
-pub use app::Pencil;
+pub use app::Pen;
 pub use types::{
-    PencilError,
+    PenError,
         PenHTTPError,
         PenUserError,
     UserError,
-    PencilResult,
+    PenResult,
     ViewArgs,
     ViewFunc,
     UserErrorHandler,

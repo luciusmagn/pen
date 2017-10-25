@@ -13,7 +13,7 @@ use mime_guess::{guess_mime_type, Mime};
 use wrappers::Response;
 use types::{
     PenHTTPError,
-    PencilResult,
+    PenResult,
     UserError,
 };
 use http_errors::{
@@ -40,11 +40,11 @@ pub fn safe_join(directory: &str, filename: &str) -> Option<PathBuf> {
     }
 }
 
-pub fn abort(code: u16) -> PencilResult {
+pub fn abort(code: u16) -> PenResult {
     Err(PenHTTPError(HTTPError::new(code)))
 }
 
-pub fn redirect(location: &str, code: u16) -> PencilResult {
+pub fn redirect(location: &str, code: u16) -> PenResult {
     let mut response = Response::from(format!(
 "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 3.2 Final//EN\">
 <title>Redirecting...</title>
@@ -63,7 +63,7 @@ pub fn escape(s: &str) -> String {
      .replace(">", "&gt;").replace("\"", "&quot;")
 }
 
-pub fn send_file(filepath: &str, mimetype: Mime, as_attachment: bool) -> PencilResult {
+pub fn send_file(filepath: &str, mimetype: Mime, as_attachment: bool) -> PenResult {
     let filepath = Path::new(filepath);
     if !filepath.is_file() {
         return Err(PenHTTPError(NotFound));
@@ -96,7 +96,7 @@ pub fn send_file(filepath: &str, mimetype: Mime, as_attachment: bool) -> PencilR
 }
 
 pub fn send_file_range(filepath: &str, mimetype: Mime, as_attachment: bool, range: Option<&Range>)
-    -> PencilResult
+    -> PenResult
 {
     let filepath = Path::new(filepath);
     if !filepath.is_file() {
@@ -177,7 +177,7 @@ pub fn send_file_range(filepath: &str, mimetype: Mime, as_attachment: bool, rang
 }
 
 pub fn send_from_directory(directory: &str, filename: &str,
-                           as_attachment: bool) -> PencilResult {
+                           as_attachment: bool) -> PenResult {
     match safe_join(directory, filename) {
         Some(filepath) => {
             let mimetype = guess_mime_type(filepath.as_path());
@@ -192,7 +192,7 @@ pub fn send_from_directory(directory: &str, filename: &str,
 
 pub fn send_from_directory_range(directory: &str, filename: &str,
                            as_attachment: bool, range: Option<&Range>)
-    -> PencilResult
+    -> PenResult
 {
     match safe_join(directory, filename) {
         Some(filepath) => {

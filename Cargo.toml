@@ -1,14 +1,13 @@
 [package]
-name = "light_pencil"
-version = "0.4.3"
+name = "pen"
+version = "0.1.0"
 authors = ["Shipeng Feng <fsp261@gmail.com>", "Pyry Kontio <pyry.kontio@drasa.eu>", "Lukáš Hozda <luk.hozda@gmail.com>"]
 keywords = ["web", "framework", "server", "http"]
 license = "BSD-3-Clause"
 readme = "README.md"
-repository = "https://github.com/luciusmagn/light_pencil"
-homepage = "https://github.com/luciusmagnn/light_pencil"
-documentation = "http://fengsp.github.io/pencil/"
-description = "A micro web framework for Rust. (A very light fork of a Pencil fork)"
+repository = "https://github.com/luciusmagn/pen"
+homepage = "https://github.com/luciusmagnn/pen"
+description = "A micro web framework for Rust. (A different fork of a very light fork of a Pencil fork)"
 categories = ["web-programming::http-server"]
 
 [dependencies]

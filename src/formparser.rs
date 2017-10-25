@@ -9,7 +9,7 @@ use datastructures::MultiDict;
 use formdata::{read_formdata, FilePart};
 use hyper::mime::{Mime, TopLevel, SubLevel};
 
-/// This type implements parsing of form data for Pencil. It can parse
+/// This type implements parsing of form data for Pen. It can parse
 /// multipart and url encoded form data.
 pub struct FormDataParser;
 

@@ -7,7 +7,7 @@ use std::fmt;
 use wrappers::{Request, Response};
 pub use http_errors::HTTPError;
 
-pub use self::PencilError::{
+pub use self::PenError::{
     PenHTTPError,
     PenUserError
 };
@@ -38,24 +38,24 @@ impl error::Error for UserError {
 }
 
 #[derive(Clone, Debug)]
-pub enum PencilError {
+pub enum PenError {
     PenHTTPError(HTTPError),
     PenUserError(UserError),
 }
 
-impl convert::From<HTTPError> for PencilError {
-    fn from(err: HTTPError) -> PencilError {
+impl convert::From<HTTPError> for PenError {
+    fn from(err: HTTPError) -> PenError {
         PenHTTPError(err)
     }
 }
 
-impl convert::From<UserError> for PencilError {
-    fn from(err: UserError) -> PencilError {
+impl convert::From<UserError> for PenError {
+    fn from(err: UserError) -> PenError {
         PenUserError(err)
     }
 }
 
-impl fmt::Display for PencilError {
+impl fmt::Display for PenError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             PenHTTPError(ref err) => f.write_str(err.description()),
@@ -64,7 +64,7 @@ impl fmt::Display for PencilError {
     }
 }
 
-impl error::Error for PencilError {
+impl error::Error for PenError {
     fn description(&self) -> &str {
         match *self {
             PenHTTPError(ref err) => err.description(),
@@ -80,15 +80,15 @@ impl error::Error for PencilError {
     }
 }
 
-pub type PencilResult = Result<Response, PencilError>;
+pub type PenResult = Result<Response, PenError>;
 
 pub type ViewArgs = HashMap<String, String>;
-pub type ViewFunc = fn(&mut Request) -> PencilResult;
+pub type ViewFunc = fn(&mut Request) -> PenResult;
 
-pub type HTTPErrorHandler = Fn(HTTPError) -> PencilResult + Send + Sync;
-pub type UserErrorHandler = Fn(UserError) -> PencilResult + Send + Sync;
+pub type HTTPErrorHandler = Fn(HTTPError) -> PenResult + Send + Sync;
+pub type UserErrorHandler = Fn(UserError) -> PenResult + Send + Sync;
 
-pub type BeforeRequestFunc = Fn(&mut Request) -> Option<PencilResult> + Send + Sync;
+pub type BeforeRequestFunc = Fn(&mut Request) -> Option<PenResult> + Send + Sync;
 pub type AfterRequestFunc = Fn(&Request, &mut Response) + Send + Sync;
 
-pub type TeardownRequestFunc = Fn(Option<&PencilError>) + Send + Sync;
+pub type TeardownRequestFunc = Fn(Option<&PenError>) + Send + Sync;
